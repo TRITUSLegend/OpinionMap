@@ -1,0 +1,31 @@
+# ============================================
+# AgentFlow AI - Prometheus Configuration
+# ============================================
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  scrape_timeout: 10s
+
+  external_labels:
+    monitor: 'agentflow-monitor'
+    environment: 'production'
+
+# Scrape configurations
+scrape_configs:
+  # AgentFlow Backend API metrics
+  - job_name: 'agentflow-backend'
+    metrics_path: '/api/monitoring/metrics'
+    static_configs:
+      - targets: ['backend:8000']
+        labels:
+          service: 'backend'
+          app: 'agentflow'
+    scrape_interval: 10s
+
+  # Prometheus self-monitoring
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+        labels:
+          service: 'prometheus'

@@ -1,0 +1,185 @@
+# ============================================
+# AgentFlow AI - Docker Compose Configuration
+# Multi-Agent Market Intelligence Platform
+# ============================================
+
+version: '3.9'
+
+services:
+  # ──────────────────────────────────────────
+  # PostgreSQL Database
+  # ──────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    container_name: agentflow-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+      PGDATA: /var/lib/postgresql/data/pgdata
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U agentflow -d agentflow"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - agentflow-network
+
+  # ──────────────────────────────────────────
+  # Backend API (FastAPI)
+  # ──────────────────────────────────────────
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: agentflow-backend
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      CHROMA_HOST: chromadb
+      CHROMA_PORT: 8001
+    volumes:
+      - ./backend:/app
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/monitoring/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - agentflow-network
+
+  # ──────────────────────────────────────────
+  # Frontend (React + TypeScript)
+  # ──────────────────────────────────────────
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: agentflow-frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:3000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - agentflow-network
+
+  # ──────────────────────────────────────────
+  # ChromaDB (Vector Database)
+  # ──────────────────────────────────────────
+  chromadb:
+    image: chromadb/chroma:latest
+    container_name: agentflow-chromadb
+    restart: unless-stopped
+    volumes:
+      - chroma_data:/chroma/chroma
+    environment:
+      IS_PERSISTENT: "TRUE"
+      ANONYMIZED_TELEMETRY: "FALSE"
+    networks:
+      - agentflow-network
+
+  # ──────────────────────────────────────────
+  # MLflow Tracking Server
+  # ──────────────────────────────────────────
+  mlflow:
+    build:
+      context: ./monitoring/mlflow
+      dockerfile: Dockerfile
+    container_name: agentflow-mlflow
+    restart: unless-stopped
+    volumes:
+      - mlflow_data:/mlflow
+    networks:
+      - agentflow-network
+
+  # ──────────────────────────────────────────
+  # Prometheus (Metrics Collection)
+  # ──────────────────────────────────────────
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: agentflow-prometheus
+    restart: unless-stopped
+    volumes:
+      - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--web.enable-lifecycle'
+    networks:
+      - agentflow-network
+
+  # ──────────────────────────────────────────
+  # Grafana (Metrics Visualization)
+  # ──────────────────────────────────────────
+  grafana:
+    image: grafana/grafana:latest
+    container_name: agentflow-grafana
+    restart: unless-stopped
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /var/lib/grafana/dashboards/agentflow.json
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    depends_on:
+      - prometheus
+    networks:
+      - agentflow-network
+
+  # ──────────────────────────────────────────
+  # Nginx (Reverse Proxy & Load Balancer)
+  # ──────────────────────────────────────────
+  nginx:
+    image: nginx:alpine
+    container_name: agentflow-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+    depends_on:
+      - backend
+      - frontend
+    networks:
+      - agentflow-network
+
+# ──────────────────────────────────────────
+# Networks
+# ──────────────────────────────────────────
+networks:
+  agentflow-network:
+    driver: bridge
+    name: agentflow-network
+
+# ──────────────────────────────────────────
+# Volumes
+# ──────────────────────────────────────────
+volumes:
+  postgres_data:
+    name: agentflow-postgres-data
+  chroma_data:
+    name: agentflow-chroma-data
+  mlflow_data:
+    name: agentflow-mlflow-data
+  grafana_data:
+    name: agentflow-grafana-data
