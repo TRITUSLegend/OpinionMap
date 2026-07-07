@@ -30,8 +30,7 @@ The platform employs **Retrieval-Augmented Generation (RAG)** with ChromaDB for 
 
 Whether you're tracking competitor movements, analyzing market sentiment, or discovering emerging trends — OpinionMap provides the intelligence you need, when you need it.
 
-Live Link: opinionmap.netlify.app
-
+**Live Application:** https://opinionmap.netlify.app
 ---
 
 ## Screenshots
