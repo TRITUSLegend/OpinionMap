@@ -38,24 +38,20 @@ Live Link: opinionmap.netlify.app
 
 <div align="center">
 
-### Dashboard
-<img src="assets/screenshots/dashboard.png" width="900"/>
+## Authentication
+![Authentication](assets/screenshots/authentication.jpeg)
 
----
+## Dashboard
+![Dashboard](assets/screenshots/dashboard.jpeg)
 
-### Workflow Builder
-<img src="assets/screenshots/workflow.png" width="900"/>
+## Workflow Management
+![Workflow](assets/screenshots/workflow.jpeg)
 
----
+## Reports
+![Reports](assets/screenshots/reports.jpeg)
 
-### AI Report Generation
-<img src="assets/screenshots/report.png" width="900"/>
-
----
-
-### Authentication
-<img src="assets/screenshots/login.png" width="900"/>
-
+## User Management
+![Users](assets/screenshots/users.jpeg)
 
 </div>
 
