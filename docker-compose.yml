@@ -36,27 +36,15 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
+    
     container_name: agentflow-backend
     restart: unless-stopped
+    
+    ports:
+    - "8000:8000"
+    
     env_file:
-      - .env
-    environment:
-      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
-      CHROMA_HOST: chromadb
-      CHROMA_PORT: 8001
-    volumes:
-      - ./backend:/app
-    depends_on:
-      postgres:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/api/monitoring/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
-    networks:
-      - agentflow-network
+    - .env
 
   # ──────────────────────────────────────────
   # Frontend (React + TypeScript)
@@ -113,16 +101,12 @@ services:
     image: prom/prometheus:latest
     container_name: agentflow-prometheus
     restart: unless-stopped
-    volumes:
-      - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
-    command:
-      - '--config.file=/etc/prometheus/prometheus.yml'
-      - '--storage.tsdb.path=/prometheus'
-      - '--web.console.libraries=/etc/prometheus/console_libraries'
-      - '--web.console.templates=/etc/prometheus/consoles'
-      - '--web.enable-lifecycle'
-    networks:
-      - agentflow-network
+    
+    ports:
+    - "9090:9090"
+
+  volumes:
+    - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
 
   # ──────────────────────────────────────────
   # Grafana (Metrics Visualization)
@@ -131,18 +115,13 @@ services:
     image: grafana/grafana:latest
     container_name: agentflow-grafana
     restart: unless-stopped
+    
+    ports:
+    - "3000:3000"
+    
     environment:
       GF_SECURITY_ADMIN_USER: admin
       GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
-      GF_USERS_ALLOW_SIGN_UP: "false"
-      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /var/lib/grafana/dashboards/agentflow.json
-    volumes:
-      - grafana_data:/var/lib/grafana
-      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
-    depends_on:
-      - prometheus
-    networks:
-      - agentflow-network
 
   # ──────────────────────────────────────────
   # Nginx (Reverse Proxy & Load Balancer)
