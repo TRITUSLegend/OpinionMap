@@ -30,13 +30,32 @@ The platform employs **Retrieval-Augmented Generation (RAG)** with ChromaDB for 
 
 Whether you're tracking competitor movements, analyzing market sentiment, or discovering emerging trends — OpinionMap provides the intelligence you need, when you need it.
 
+Live Link: opinionmap.netlify.app
+
 ---
 
 ## Screenshots
 
 <div align="center">
 
-> *Screenshots coming soon — the dashboard features interactive charts, real-time agent monitoring, and comprehensive market analysis views.*
+### Dashboard
+<img src="assets/screenshots/dashboard.png" width="900"/>
+
+---
+
+### Workflow Builder
+<img src="assets/screenshots/workflow.png" width="900"/>
+
+---
+
+### AI Report Generation
+<img src="assets/screenshots/report.png" width="900"/>
+
+---
+
+### Authentication
+<img src="assets/screenshots/login.png" width="900"/>
+
 
 </div>
 
