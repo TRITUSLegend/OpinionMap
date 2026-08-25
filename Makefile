@@ -28,11 +28,11 @@ up: ## Start all services in background
 down: ## Stop all services
 	docker-compose down
 
-test: ## Run backend tests
-	cd backend && pytest tests/ -v --tb=short
+test: ## Run backend tests (test suite not yet implemented)
+	@echo "Note: backend/tests/ does not exist yet. No tests to run."
 
-test-cov: ## Run tests with coverage
-	cd backend && pytest tests/ -v --cov=app --cov-report=html --cov-report=term-missing
+test-cov: ## Run tests with coverage (test suite not yet implemented)
+	@echo "Note: backend/tests/ does not exist yet. No tests to run."
 
 clean: ## Stop services and clean artifacts
 	docker-compose down -v
@@ -53,11 +53,11 @@ logs: ## Follow all service logs
 logs-backend: ## Follow backend logs only
 	docker-compose logs -f backend
 
-format: ## Format backend code
-	cd backend && black . && isort .
+format: ## Format backend code (black/isort not configured -- run manually if installed)
+	@echo "Note: black and isort are not in requirements.txt. Install them manually to format."
 
-lint: ## Lint backend code
-	cd backend && ruff check . && mypy app/
+lint: ## Lint backend code (ruff/mypy not configured -- run manually if installed)
+	@echo "Note: ruff and mypy are not in requirements.txt. Install them manually to lint."
 
 monitoring: ## Start monitoring stack
-	docker-compose up -d prometheus grafana mlflow
+	docker-compose up -d prometheus grafana

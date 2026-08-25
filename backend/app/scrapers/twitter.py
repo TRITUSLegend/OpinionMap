@@ -1,5 +1,17 @@
 """
-Twitter/X sentiment scraper with realistic mock mode.
+Twitter/X sentiment source -- SIMULATED DATA, NOT A LIVE SCRAPER.
+
+This module does NOT call the Twitter/X API. X's API requires paid access, so this
+module generates realistic synthetic sentiment data instead, keeping the multi-source
+research pipeline demoable end-to-end without a paid API key.
+
+Every record it returns is machine-generated from the sentence templates below. Treat
+its output as illustrative sample data, never as real observed public opinion.
+
+Note the contrast with the other two sources: ``app.scrapers.reddit`` and
+``app.scrapers.youtube`` DO have real live code paths (PRAW and the YouTube Data
+API v3) and only fall back to generated data when credentials are missing/rejected
+or ``DEBUG`` is true. This module has no live path at all -- it is always synthetic.
 """
 
 from __future__ import annotations
@@ -41,6 +53,7 @@ _NEUTRAL_TEMPLATES: list[str] = [
 ]
 
 def _generate_mock_tweets(query: str, count: int) -> list[dict[str, Any]]:
+    """Build ``count`` synthetic tweets about ``query``. No network access involved."""
     tweets: list[dict[str, Any]] = []
     
     sentiments: list[tuple[list[str], float, float]] = [
@@ -77,7 +90,13 @@ def _generate_mock_tweets(query: str, count: int) -> list[dict[str, Any]]:
     return tweets
 
 class TwitterScraper(BaseScraper):
-    """Scrapes Twitter/X results. Currently uses mock data for reliable testing."""
+    """Simulated Twitter/X source.
+
+    Despite the ``Scraper`` name (kept so it stays interchangeable with the real
+    :class:`~app.scrapers.reddit.RedditScraper` and
+    :class:`~app.scrapers.youtube.YouTubeScraper`), this class performs no network
+    calls. :meth:`_scrape_impl` returns synthetic tweets -- see the module docstring.
+    """
     def __init__(self, **kwargs: Any) -> None:
         super().__init__(request_delay=1.0, **kwargs)
         self.logger = log.bind(scraper="TwitterScraper")
