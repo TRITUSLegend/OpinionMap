@@ -7,23 +7,17 @@ alembic
 pydantic
 pydantic-settings
 python-jose[cryptography]
-passlib[bcrypt]
 python-multipart
 httpx
-beautifulsoup4
-lxml
+lxml  # required transitively by python-docx (docx report generation)
 praw
 google-api-python-client
 google-generativeai
-langchain
-langchain-google-genai
 langgraph
 chromadb
 reportlab
 python-docx
 prometheus-client
-mlflow
-apscheduler
 structlog
 pytest
 pytest-asyncio
