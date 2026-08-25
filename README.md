@@ -24,9 +24,9 @@
 
 ## About
 
-**OpinionMap** is a production-grade, multi-agent market intelligence platform that leverages cutting-edge AI orchestration to provide comprehensive market analysis. Built with **LangGraph** for sophisticated agent workflow management and powered by **Google Gemini**, the platform autonomously scrapes, processes, and analyzes data from YouTube, Reddit, news outlets, and more.
+**OpinionMap** is a production-grade, multi-agent market intelligence platform that leverages cutting-edge AI orchestration to provide comprehensive market analysis. Built with **LangGraph** for sophisticated agent workflow management and powered by **Google Gemini**, the platform autonomously scrapes, processes, and analyzes data from YouTube and Reddit (with a Twitter/X sentiment simulator for demo purposes).
 
-The platform employs **Retrieval-Augmented Generation (RAG)** with ChromaDB for contextual analysis, ensuring insights are grounded in real data. A beautiful **React + TypeScript** dashboard provides interactive visualizations, while **MLflow** tracks experiment performance and **Prometheus + Grafana** deliver enterprise-grade observability.
+The platform employs **Retrieval-Augmented Generation (RAG)** with ChromaDB for contextual analysis, ensuring insights are grounded in real data. A beautiful **React + TypeScript** dashboard provides interactive visualizations, while **Prometheus + Grafana** deliver real-time observability.
 
 Whether you're tracking competitor movements, analyzing market sentiment, or discovering emerging trends — OpinionMap provides the intelligence you need, when you need it.
 
@@ -59,11 +59,11 @@ Whether you're tracking competitor movements, analyzing market sentiment, or dis
 ## Features
 
 - 🤖 **Multi-Agent Orchestration** — LangGraph-powered agent workflows with dynamic task routing and parallel execution
-- 📊 **Real-Time Market Intelligence** — Continuous monitoring of YouTube, Reddit, news, and social media sources
+- 📊 **Multi-Source Intelligence** — YouTube and Reddit scraping (live or demo mode) with a local Twitter/X sentiment simulator; demo mode runs the full pipeline without external API keys
 - 🧠 **RAG-Powered Analysis** — ChromaDB vector storage with context-aware retrieval for grounded insights
 - 🎨 **Interactive Dashboard** — React + TypeScript UI with real-time data visualization and workflow management
 - 🔄 **Workflow Management** — Create, monitor, and control complex multi-agent analysis pipelines
-- 📈 **Comprehensive Monitoring** — Prometheus metrics, Grafana dashboards, and MLflow experiment tracking
+- 📈 **Comprehensive Monitoring** — Prometheus metrics, Grafana dashboards, and structured logging
 - 🔐 **Enterprise Security** — JWT authentication, rate limiting, CORS, and security headers
 - 🐳 **One-Command Deployment** — Full Docker Compose stack with health checks and auto-restart
 
@@ -74,11 +74,11 @@ Whether you're tracking competitor movements, analyzing market sentiment, or dis
 | Layer | Technology |
 |:---|:---|
 | **Backend** | Python 3.11 · FastAPI · SQLAlchemy · Alembic · Pydantic |
-| **Frontend** | React 18 · TypeScript · Vite · TanStack Query · Recharts |
-| **AI / ML** | Google Gemini · LangGraph · LangChain · ChromaDB (RAG) |
+| **Frontend** | React 19 · TypeScript · Vite · React Router · Axios · Recharts · Tailwind CSS |
+| **AI / ML** | Google Gemini · LangGraph · ChromaDB (RAG) |
 | **Database** | PostgreSQL 16 · ChromaDB (Vector Store) |
-| **Monitoring** | Prometheus · Grafana · MLflow · Structured Logging |
-| **DevOps** | Docker · Docker Compose · Nginx · GitHub Actions · Makefile |
+| **Monitoring** | Prometheus · Grafana · Structured Logging |
+| **DevOps** | Docker · Docker Compose · Nginx · Makefile |
 
 ---
 
@@ -104,7 +104,7 @@ graph TB
         LG[LangGraph Orchestrator]
         YTA[YouTube Agent]
         RDA[Reddit Agent]
-        NWA[News Agent]
+        TWA[Twitter Agent]
         ANA[Analysis Agent]
     end
 
@@ -117,13 +117,12 @@ graph TB
     subgraph Monitoring
         PROM[Prometheus]
         GRAF[Grafana]
-        MLF[MLflow]
     end
 
     subgraph External Sources
         YT[YouTube API]
         RD[Reddit API]
-        NW[News Sources]
+        TW["Twitter/X (Simulated)"]
     end
 
     UI --> NG
@@ -131,17 +130,16 @@ graph TB
     API --> AUTH
     API --> WF
     WF --> LG
-    LG --> YTA & RDA & NWA & ANA
+    LG --> YTA & RDA & TWA & ANA
     YTA --> YT
     RDA --> RD
-    NWA --> NW
+    TWA --> TW
     ANA --> GEM
     ANA --> CR
     API --> PG
     LG --> CR
     API --> PROM
     PROM --> GRAF
-    LG --> MLF
 
     style UI fill:#61DAFB,stroke:#333,color:#000
     style NG fill:#009639,stroke:#333,color:#fff
@@ -152,7 +150,7 @@ graph TB
     style GEM fill:#4285F4,stroke:#333,color:#fff
     style PROM fill:#E6522C,stroke:#333,color:#fff
     style GRAF fill:#F46800,stroke:#333,color:#fff
-    style MLF fill:#0194E2,stroke:#333,color:#fff
+    style TW fill:#8899A6,stroke:#333,color:#fff
 ```
 
 ---
@@ -162,6 +160,18 @@ graph TB
 ### Prerequisites
 - **Docker** and **Docker Compose**
 - **Git**
+
+### Data Sources & Demo Mode
+
+OpinionMap can run in two modes depending on which API credentials are configured:
+
+**Live mode** — YouTube and Reddit return real scraped data when valid API keys are provided (`YOUTUBE_API_KEY`, `REDDIT_CLIENT_ID`, `REDDIT_CLIENT_SECRET`) and `DEBUG=false` is set in your `.env`.
+
+**Demo mode** — All three data sources (YouTube, Reddit, and Twitter/X) return realistic synthetic data generated locally. This mode activates when `DEBUG=true` or when API credentials are missing or invalid. The default `.env.example` ships with `DEBUG=true`, so a fresh Quick Start runs entirely in demo mode — no API keys required to see the full pipeline in action.
+
+> **Note on Twitter/X:** Twitter's API requires a paid developer plan. The Twitter/X source in OpinionMap always uses a local synthetic data generator, regardless of `DEBUG` mode. This is clearly marked in `backend/app/scrapers/twitter.py`.
+
+Demo mode is intentional — it lets you run and demo the full multi-agent pipeline end-to-end without external API dependencies. To switch to live data, set `DEBUG=false` and add your API keys to `.env`.
 
 ### 1. Environment Setup
 ```bash
@@ -180,6 +190,7 @@ The platform is secured with HTTPS by default. Generate self-signed certs (or pl
 ```bash
 docker run --rm -v $(pwd)/nginx/ssl:/ssl alpine/openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout /ssl/privkey.pem -out /ssl/fullchain.pem -subj "/C=US/ST=State/L=City/O=OpinionMap/CN=localhost"
 ```
+> `nginx/ssl/*.pem` is gitignored and intentionally **not** committed — every deployment generates its own certificates with the command above.
 
 ### 3. Deploy
 Deploy the entire secure stack using Docker Compose:
@@ -210,14 +221,24 @@ OpinionMap provides interactive API documentation:
 
 | Method | Endpoint | Description |
 |:---|:---|:---|
+| `POST` | `/api/auth/register` | Register a new user account |
 | `POST` | `/api/auth/login` | Authenticate and receive JWT token |
-| `GET` | `/api/workflows` | List all workflows |
-| `POST` | `/api/workflows` | Create a new analysis workflow |
+| `GET` | `/api/auth/users` | List users (authenticated) |
+| `POST` | `/api/workflows/` | Create and run a new analysis workflow |
+| `GET` | `/api/workflows/` | List all workflows for the current user |
 | `GET` | `/api/workflows/{id}` | Get workflow status and results |
-| `POST` | `/api/agents/execute` | Trigger agent execution |
-| `GET` | `/api/intelligence/reports` | Retrieve analysis reports |
-| `GET` | `/api/monitoring/metrics` | Prometheus metrics endpoint |
-| `GET` | `/api/health` | Health check |
+| `DELETE` | `/api/workflows/{id}` | Delete a workflow and its data |
+| `GET` | `/api/reports/` | List all generated reports |
+| `GET` | `/api/reports/{id}/export/pdf` | Download a report as PDF |
+| `GET` | `/api/reports/{id}/export/docx` | Download a report as DOCX |
+| `GET` | `/api/dashboard/overview` | Dashboard summary metrics |
+| `GET` | `/api/dashboard/sentiment` | Sentiment breakdown data |
+| `GET` | `/api/dashboard/trends` | Trend time-series data |
+| `POST` | `/api/rag/query` | Query the RAG knowledge base |
+| `GET` | `/api/schedules/` | List scheduled tasks |
+| `GET` | `/api/monitoring/health` | Health check (verifies DB connectivity) |
+| `GET` | `/metrics` | Prometheus scrape endpoint |
+| `GET` | `/` | Root / liveness check |
 
 ---
 
@@ -239,39 +260,35 @@ OpinionMap/
 │   │   ├── services/          # Business logic layer
 │   │   ├── database.py        # Database connection setup
 │   │   └── main.py            # FastAPI application entry
-│   ├── tests/                 # Backend test suite
+│   ├── tests/                 # (not yet implemented — planned)
 │   ├── alembic.ini            # Alembic configuration
 │   ├── Dockerfile             # Backend container
 │   └── requirements.txt       # Python dependencies
 ├── frontend/                   # React Frontend
 │   ├── src/
+│   │   ├── api/               # API client and service functions
+│   │   ├── assets/            # Static assets
 │   │   ├── components/        # Reusable UI components
-│   │   ├── pages/             # Page components
-│   │   ├── hooks/             # Custom React hooks
-│   │   ├── services/          # API client services
-│   │   ├── stores/            # State management
-│   │   └── types/             # TypeScript type definitions
+│   │   ├── context/           # React context providers
+│   │   └── pages/             # Page components
 │   ├── Dockerfile             # Frontend container
 │   ├── nginx.conf             # Frontend Nginx config
 │   └── package.json           # Node dependencies
 ├── monitoring/                 # Observability Stack
 │   ├── grafana/
 │   │   └── dashboards/        # Grafana dashboard configs
-│   ├── mlflow/
-│   │   └── Dockerfile         # MLflow server container
 │   └── prometheus/
 │       └── prometheus.yml     # Prometheus scrape config
 ├── nginx/                      # Reverse Proxy
 │   └── nginx.conf             # Main Nginx configuration
-├── .github/
-│   └── workflows/
-│       └── ci-cd.yml          # GitHub Actions pipeline
 ├── .env.example               # Environment variable template
 ├── .gitignore                 # Git ignore rules
 ├── docker-compose.yml         # Docker Compose orchestration
 ├── Makefile                   # Development commands
 └── README.md                  # This file
 ```
+
+> **Note on tests:** an automated backend test suite is not yet implemented. `pytest` and `pytest-asyncio` are already declared in `backend/requirements.txt`, so `backend/tests/` can be added without further setup. Until then `make test` and `make test-cov` print a notice instead of running anything, and `make format` / `make lint` do the same (black, isort, ruff and mypy are intentionally not runtime dependencies).
 
 ---
 
