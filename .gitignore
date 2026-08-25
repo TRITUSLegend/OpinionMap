@@ -23,9 +23,12 @@ dist/
 # Docker
 *.log
 
-# MLflow
-mlruns/
-mlartifacts/
+# Local SQLite database (Postgres via Docker Compose is the intended runtime)
+backend/agentflow.db
+*.db-journal
+
+# SSL certificates - generate locally, never commit (see README Quick Start)
+nginx/ssl/*.pem
 
 # ChromaDB
 chroma_data/
