@@ -2,23 +2,32 @@ import { useState, useEffect } from 'react';
 import { FileText, Download, Trash2 } from 'lucide-react';
 import { fetchReports, deleteReport } from '../api/client';
 
+interface ReportItem {
+  id: string;
+  title: string;
+  executive_summary: string;
+  recommendations?: string[];
+  status: string;
+  created_at: string;
+}
+
 export const Reports = () => {
-  const [reports, setReports] = useState<any[]>([]);
+  const [reports, setReports] = useState<ReportItem[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const loadReports = async () => {
-    try {
-      const data = await fetchReports();
-      setReports(data.reports || []);
-    } catch (error) {
-      console.error("Failed to fetch reports", error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   useEffect(() => {
-    loadReports();
+    let cancelled = false;
+    fetchReports()
+      .then((data: { reports?: ReportItem[] }) => {
+        if (!cancelled) setReports(data.reports || []);
+      })
+      .catch((error) => {
+        console.error("Failed to fetch reports", error);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => { cancelled = true; };
   }, []);
 
   return (
@@ -75,7 +84,8 @@ export const Reports = () => {
                       if(confirm('Are you sure you want to delete this report?')) {
                         try {
                           await deleteReport(report.id);
-                          loadReports();
+                          const data = await fetchReports() as { reports?: ReportItem[] };
+                          setReports(data.reports || []);
                         } catch (e) {
                           console.error(e);
                         }

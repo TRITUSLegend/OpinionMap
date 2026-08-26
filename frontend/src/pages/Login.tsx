@@ -1,7 +1,8 @@
 import { useState } from 'react';
+import axios from 'axios';
 import { useNavigate, Link } from 'react-router-dom';
 import { Bot, LogIn, Loader2, Shield } from 'lucide-react';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../context/auth-context';
 import { login as apiLogin, adminLogin } from '../api/client';
 
 export const Login = () => {
@@ -27,8 +28,10 @@ export const Login = () => {
       const data = await loginFn(formData);
       login(data.access_token, data.user);
       navigate('/');
-    } catch (err: any) {
-      setError(err.response?.data?.detail || 'Failed to login');
+    } catch (err) {
+      const detail = axios.isAxiosError(err) ? err.response?.data?.detail : undefined;
+      const message = detail || (err instanceof Error ? err.message : 'Failed to login');
+      setError(message);
     } finally {
       setLoading(false);
     }

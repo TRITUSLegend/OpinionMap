@@ -6,6 +6,21 @@ interface HeaderProps {
   toggleSidebar: () => void;
 }
 
+interface ActivityItem {
+  type: string;
+  id: string;
+  status: string;
+  query: string;
+  date: string;
+  // Additional optional fields the transform defensively reads
+  action?: string;
+  title?: string;
+  description?: string;
+  details?: string;
+  created_at?: string;
+  timestamp?: string;
+}
+
 interface Notification {
   id: string;
   type: 'success' | 'info' | 'warning' | 'workflow' | 'report';
@@ -38,15 +53,14 @@ export const Header = ({ toggleSidebar }: HeaderProps) => {
   useEffect(() => {
     if (!showNotifications) return;
     let cancelled = false;
-    setLoading(true);
 
     fetchRecentActivity()
-      .then((data) => {
+      .then((data: { activities?: ActivityItem[] } | ActivityItem[]) => {
         if (cancelled) return;
         // Transform API activity into notifications
-        const items: Notification[] = (data.activities || data || [])
+        const items: Notification[] = (Array.isArray(data) ? data : data.activities || [])
           .slice(0, 12)
-          .map((a: any, i: number) => {
+          .map((a: ActivityItem, i: number) => {
             const isWorkflow = a.type === 'workflow' || a.action?.includes('workflow');
             const isReport = a.type === 'report' || a.action?.includes('report');
             return {
@@ -117,7 +131,12 @@ export const Header = ({ toggleSidebar }: HeaderProps) => {
         {/* Notification Bell */}
         <div className="relative" ref={panelRef}>
           <button
-            onClick={() => setShowNotifications((v) => !v)}
+            onClick={() => {
+              const next = !showNotifications;
+              setShowNotifications(next);
+              // Show the spinner immediately on open; the fetch effect clears it.
+              if (next) setLoading(true);
+            }}
             className="relative text-gray-400 hover:text-white transition-colors"
             id="notification-bell"
           >

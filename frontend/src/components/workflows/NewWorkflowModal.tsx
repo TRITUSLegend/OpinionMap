@@ -12,7 +12,7 @@ export const NewWorkflowModal = ({ onClose, onSuccess }: { onClose: () => void, 
     setSubmitting(true);
     
     const activeSources = Object.entries(sources)
-      .filter(([_, isActive]) => isActive)
+      .filter(([, isActive]) => isActive)
       .map(([key]) => key);
 
     try {

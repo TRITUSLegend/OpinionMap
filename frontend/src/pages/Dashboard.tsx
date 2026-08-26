@@ -4,6 +4,37 @@ import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { MetricCard } from '../components/dashboard/MetricCard';
 import { fetchOverview, fetchSentiment, fetchTrends, fetchWorkflows } from '../api/client';
 
+interface WorkflowSummary {
+  id: string;
+  query: string;
+  status: string;
+  sources: string[];
+  created_at: string;
+  completed_at: string | null;
+}
+
+interface OverviewMetrics {
+  total_workflows: number;
+  completed_workflows: number;
+  total_reports: number;
+  avg_sentiment_score: number;
+  total_data_points: number;
+  active_schedules: number;
+}
+
+interface SentimentPoint {
+  label: string;
+  count: number;
+  percentage: number;
+}
+
+interface TrendPoint {
+  date: string;
+  positive: number;
+  negative: number;
+  neutral: number;
+}
+
 const SENTIMENT_COLORS: { [key: string]: string } = {
   'positive': '#76b900',
   'negative': '#ef4444',
@@ -11,13 +42,13 @@ const SENTIMENT_COLORS: { [key: string]: string } = {
 };
 
 export const Dashboard = () => {
-  const [workflows, setWorkflows] = useState<any[]>([]);
+  const [workflows, setWorkflows] = useState<WorkflowSummary[]>([]);
   const [selectedWorkflowId, setSelectedWorkflowId] = useState<string | null>(null);
   const [dropdownOpen, setDropdownOpen] = useState(false);
 
-  const [metrics, setMetrics] = useState<any>(null);
-  const [sentimentData, setSentimentData] = useState<any[]>([]);
-  const [trendData, setTrendData] = useState<any[]>([]);
+  const [metrics, setMetrics] = useState<OverviewMetrics | null>(null);
+  const [sentimentData, setSentimentData] = useState<SentimentPoint[]>([]);
+  const [trendData, setTrendData] = useState<TrendPoint[]>([]);
   const [loading, setLoading] = useState(true);
   const [chartLoading, setChartLoading] = useState(false);
 
@@ -25,8 +56,10 @@ export const Dashboard = () => {
   useEffect(() => {
     const loadWorkflows = async () => {
       try {
-        const data = await fetchWorkflows();
-        const completed = (data.workflows || []).filter((w: any) => w.status === 'completed');
+        const data = await fetchWorkflows() as { workflows?: WorkflowSummary[] };
+        const completed = (data.workflows || []).filter((w) =>
+          ['completed', 'auto_approved'].includes(w.status)
+        );
         setWorkflows(completed);
         // Auto-select the most recent completed workflow if any exist
         if (completed.length > 0) {
@@ -62,7 +95,7 @@ export const Dashboard = () => {
         if (overviewRes.status === 'fulfilled') {
           setMetrics(overviewRes.value);
         } else {
-          setMetrics({ total_workflows: 0, total_reports: 0, avg_sentiment_score: 0, total_data_points: 0 });
+          setMetrics({ total_workflows: 0, completed_workflows: 0, total_reports: 0, avg_sentiment_score: 0, total_data_points: 0, active_schedules: 0 });
         }
 
         if (sentimentRes.status === 'fulfilled') {

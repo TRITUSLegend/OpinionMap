@@ -1,6 +1,6 @@
 import { NavLink } from 'react-router-dom';
 import { LayoutDashboard, Workflow, FileText, Settings, Bot, LogOut, X, Users } from 'lucide-react';
-import { useAuth } from '../../context/AuthContext';
+import { useAuth } from '../../context/auth-context';
 
 interface SidebarProps {
   isOpen: boolean;

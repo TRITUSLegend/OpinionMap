@@ -7,7 +7,8 @@ import { Login } from './pages/Login';
 import { Signup } from './pages/Signup';
 import { Users } from './pages/Users';
 import { Settings } from './pages/Settings';
-import { AuthProvider, useAuth } from './context/AuthContext';
+import { AuthProvider } from './context/AuthContext';
+import { useAuth } from './context/auth-context';
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { isAuthenticated } = useAuth();

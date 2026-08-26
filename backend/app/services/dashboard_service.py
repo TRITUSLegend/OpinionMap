@@ -24,7 +24,10 @@ async def get_overview_metrics(db: AsyncSession, user_id, workflow_id: Optional[
     # Always compute global counts for workflows and reports to reflect user's overall usage
     wf_count = await db.execute(select(func.count(Workflow.id)).where(Workflow.user_id == user_id))
     comp_wf_count = await db.execute(
-        select(func.count(Workflow.id)).where(Workflow.user_id == user_id, Workflow.status == 'completed')
+        select(func.count(Workflow.id)).where(
+            Workflow.user_id == user_id,
+            Workflow.status.in_(['completed', 'auto_approved'])
+        )
     )
     rep_count = await db.execute(
         select(func.count(Report.id)).where(Report.user_id == user_id)

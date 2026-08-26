@@ -91,7 +91,13 @@ export const deleteReport = async (id: string) => {
   return data;
 };
 
-export const register = async (data: any) => {
+interface RegisterPayload {
+  email: string;
+  password: string;
+  full_name: string;
+}
+
+export const register = async (data: RegisterPayload) => {
   const res = await apiClient.post('/auth/register', data);
   return res.data;
 };

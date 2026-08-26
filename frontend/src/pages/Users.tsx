@@ -2,23 +2,32 @@ import { useState, useEffect } from 'react';
 import { Users as UsersIcon, Shield, Mail, Calendar } from 'lucide-react';
 import { fetchUsers } from '../api/client';
 
+interface UserItem {
+  id: string;
+  email: string;
+  full_name: string;
+  role: string;
+  is_active: boolean;
+  created_at: string;
+}
+
 export const Users = () => {
-  const [users, setUsers] = useState<any[]>([]);
+  const [users, setUsers] = useState<UserItem[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const loadUsers = async () => {
-    try {
-      const data = await fetchUsers();
-      setUsers(data || []);
-    } catch (error) {
-      console.error("Failed to fetch users", error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   useEffect(() => {
-    loadUsers();
+    let cancelled = false;
+    fetchUsers()
+      .then((data: UserItem[]) => {
+        if (!cancelled) setUsers(data || []);
+      })
+      .catch((error) => {
+        console.error("Failed to fetch users", error);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => { cancelled = true; };
   }, []);
 
   return (

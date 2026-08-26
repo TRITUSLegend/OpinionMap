@@ -3,31 +3,55 @@ import { Plus, Play, CheckCircle, XCircle, Clock, Trash2 } from 'lucide-react';
 import { fetchWorkflows, deleteWorkflow } from '../api/client';
 import { NewWorkflowModal } from '../components/workflows/NewWorkflowModal';
 
+interface WorkflowItem {
+  id: string;
+  query: string;
+  status: string;
+  sources: string[];
+  created_at: string;
+}
+
 export const Workflows = () => {
-  const [workflows, setWorkflows] = useState<any[]>([]);
+  const [workflows, setWorkflows] = useState<WorkflowItem[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  const loadWorkflows = async () => {
+  // Used by the delete handler and the new-workflow modal to refresh on demand.
+  const refetchWorkflows = async () => {
     try {
-      const data = await fetchWorkflows();
+      const data = await fetchWorkflows() as { workflows?: WorkflowItem[] };
       setWorkflows(data.workflows || []);
     } catch (error) {
       console.error("Failed to fetch workflows", error);
-    } finally {
-      setLoading(false);
     }
   };
 
   useEffect(() => {
-    loadWorkflows();
-    const interval = setInterval(loadWorkflows, 10000); // Polling every 10s
-    return () => clearInterval(interval);
+    let cancelled = false;
+    const poll = () => {
+      fetchWorkflows()
+        .then((data: { workflows?: WorkflowItem[] }) => {
+          if (!cancelled) setWorkflows(data.workflows || []);
+        })
+        .catch((error) => {
+          console.error("Failed to fetch workflows", error);
+        })
+        .finally(() => {
+          if (!cancelled) setLoading(false);
+        });
+    };
+    poll();
+    const interval = setInterval(poll, 10000); // Polling every 10s
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
   }, []);
 
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'completed': return <CheckCircle className="w-5 h-5 text-emerald-400" />;
+      case 'auto_approved': return <CheckCircle className="w-5 h-5 text-amber-400" />;
       case 'running': return <Play className="w-5 h-5 text-accent animate-pulse" />;
       case 'failed': return <XCircle className="w-5 h-5 text-red-400" />;
       default: return <Clock className="w-5 h-5 text-gray-400" />;
@@ -83,7 +107,7 @@ export const Workflows = () => {
                     <td className="p-4">
                       <div className="flex items-center gap-2">
                         {getStatusIcon(wf.status)}
-                        <span className="capitalize">{wf.status}</span>
+                        <span className="capitalize">{wf.status === 'auto_approved' ? 'Auto Approved' : wf.status}</span>
                       </div>
                     </td>
                     <td className="p-4 text-gray-400 whitespace-nowrap">{new Date(wf.created_at).toLocaleDateString()}</td>
@@ -93,7 +117,7 @@ export const Workflows = () => {
                           if(confirm('Are you sure you want to delete this workflow?')) {
                             try {
                               await deleteWorkflow(wf.id);
-                              loadWorkflows();
+                              await refetchWorkflows();
                             } catch (e) {
                               console.error(e);
                             }
@@ -118,7 +142,7 @@ export const Workflows = () => {
           onClose={() => setIsModalOpen(false)} 
           onSuccess={() => {
             setIsModalOpen(false);
-            loadWorkflows();
+            refetchWorkflows();
           }} 
         />
       )}

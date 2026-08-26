@@ -1,39 +1,37 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { AuthContext, type User } from './auth-context';
 
-interface User {
-  id: string;
-  email: string;
-  full_name: string;
-  role: string;
-}
+/**
+ * Read a previously persisted session from localStorage.
+ *
+ * Runs once as lazy state initialisation rather than in an effect, so `user` and
+ * `token` are already correct on the very first render. (Restoring in an effect
+ * left a render where `isAuthenticated` was true but `user` was still null.)
+ * A stale or corrupt entry is cleared rather than trusted.
+ */
+const readStoredSession = (): { user: User | null; token: string | null } => {
+  const storedToken = localStorage.getItem('token');
+  const storedUser = localStorage.getItem('user');
 
-interface AuthContextType {
-  user: User | null;
-  token: string | null;
-  login: (token: string, user: User) => void;
-  logout: () => void;
-  isAuthenticated: boolean;
-}
+  if (storedToken && storedUser) {
+    try {
+      return { user: JSON.parse(storedUser) as User, token: storedToken };
+    } catch {
+      // Corrupt payload — fall through and clear it
+    }
+  }
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+  localStorage.removeItem('token');
+  localStorage.removeItem('user');
+  return { user: null, token: null };
+};
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(null);
-  const [token, setToken] = useState<string | null>(localStorage.getItem('token'));
+  const [initialSession] = useState(readStoredSession);
+  const [user, setUser] = useState<User | null>(initialSession.user);
+  const [token, setToken] = useState<string | null>(initialSession.token);
   const navigate = useNavigate();
-
-  useEffect(() => {
-    // Attempt to restore session from local storage
-    const storedUser = localStorage.getItem('user');
-    if (storedUser && token) {
-      setUser(JSON.parse(storedUser));
-    } else {
-      setToken(null);
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
-    }
-  }, [token]);
 
   const login = (newToken: string, newUser: User) => {
     setToken(newToken);
@@ -55,12 +53,4 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       {children}
     </AuthContext.Provider>
   );
-};
-
-export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context;
 };
