@@ -1,5 +1,5 @@
 """
-AgentFlow AI - Application Configuration
+OpinionMap - Application configuration
 
 Loads all settings from environment variables and .env file using pydantic-settings.
 """

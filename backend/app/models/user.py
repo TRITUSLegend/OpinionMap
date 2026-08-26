@@ -1,5 +1,5 @@
 """
-AgentFlow AI - User Model
+OpinionMap - User account model with role-based access control.
 
 SQLAlchemy ORM model for user accounts with role-based access control.
 """
@@ -44,14 +44,18 @@ class User(Base):
     )
 
     # Relationships
+    # lazy="select" (not "selectin"): get_current_user loads a User on every
+    # authenticated request, and eager loading pulled that user's entire reports,
+    # workflows and agent_logs tables into memory each time. Nothing reads these
+    # as ORM relationships -- all access goes through explicit select().
     reports: Mapped[list["Report"]] = relationship(
-        "Report", back_populates="user", lazy="selectin"
+        "Report", back_populates="user", lazy="select"
     )
     workflows: Mapped[list["Workflow"]] = relationship(
-        "Workflow", back_populates="user", lazy="selectin"
+        "Workflow", back_populates="user", lazy="select"
     )
     agent_logs: Mapped[list["AgentLog"]] = relationship(
-        "AgentLog", back_populates="user", lazy="selectin"
+        "AgentLog", back_populates="user", lazy="select"
     )
 
     def __repr__(self) -> str:

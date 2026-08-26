@@ -1,5 +1,5 @@
 """
-AgentFlow AI - Models Package
+OpinionMap - Models package
 
 Re-exports all ORM model classes and the declarative Base for convenient imports.
 """

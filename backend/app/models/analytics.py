@@ -1,5 +1,5 @@
 """
-AgentFlow AI - Analytics Model
+OpinionMap - Analytics model for computed metrics derived from workflow results.
 
 SQLAlchemy ORM model for computed analytics metrics.
 """
@@ -7,7 +7,7 @@ SQLAlchemy ORM model for computed analytics metrics.
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, ForeignKey, JSON, String, func
+from sqlalchemy import DateTime, ForeignKey, Index, JSON, String, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.database import Base
@@ -17,6 +17,10 @@ class Analytics(Base):
     """Computed analytics metrics for workflow analysis results."""
 
     __tablename__ = "analytics"
+    __table_args__ = (
+        Index("ix_analytics_workflow_id", "workflow_id"),
+        Index("ix_analytics_workflow_metric", "workflow_id", "metric_type"),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(
         primary_key=True, default=uuid.uuid4

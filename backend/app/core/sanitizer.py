@@ -1,5 +1,5 @@
 """
-AgentFlow AI — Query Sanitizer
+OpinionMap - Query sanitizer
 
 Central input sanitization layer that sits between user input and LLM prompts.
 Prevents prompt injection, enforces length limits, and strips dangerous patterns.

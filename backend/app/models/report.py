@@ -1,5 +1,5 @@
 """
-AgentFlow AI - Report Model
+OpinionMap - Report model for generated market intelligence reports.
 
 SQLAlchemy ORM model for generated market intelligence reports.
 """
@@ -7,7 +7,7 @@ SQLAlchemy ORM model for generated market intelligence reports.
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, ForeignKey, JSON, String, Text, func
+from sqlalchemy import DateTime, ForeignKey, Index, JSON, String, Text, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
@@ -17,6 +17,10 @@ class Report(Base):
     """Generated intelligence report with structured analysis sections."""
 
     __tablename__ = "reports"
+    __table_args__ = (
+        Index("ix_reports_user_id", "user_id"),
+        Index("ix_reports_workflow_id", "workflow_id"),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(
         primary_key=True, default=uuid.uuid4

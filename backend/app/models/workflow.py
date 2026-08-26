@@ -1,5 +1,5 @@
 """
-AgentFlow AI - Workflow Model
+OpinionMap - Workflow model for tracking multi-agent analysis pipeline execution.
 
 SQLAlchemy ORM model for analysis workflow orchestration and tracking.
 """
@@ -7,7 +7,7 @@ SQLAlchemy ORM model for analysis workflow orchestration and tracking.
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, ForeignKey, JSON, String, Text, func
+from sqlalchemy import DateTime, ForeignKey, Index, JSON, String, Text, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
@@ -17,6 +17,11 @@ class Workflow(Base):
     """Workflow model tracking multi-agent analysis pipeline execution."""
 
     __tablename__ = "workflows"
+    __table_args__ = (
+        Index("ix_workflows_user_id", "user_id"),
+        Index("ix_workflows_user_status", "user_id", "status"),
+        Index("ix_workflows_created_at", "created_at"),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(
         primary_key=True, default=uuid.uuid4
@@ -56,14 +61,17 @@ class Workflow(Base):
     user: Mapped["User"] = relationship(
         "User", back_populates="workflows"
     )
+    # lazy="select" (not "selectin"): nothing reads these as ORM relationships --
+    # all access goes through explicit select() on the foreign keys. Eager loading
+    # cost 3 extra queries every time a Workflow row was loaded.
     reports: Mapped[list["Report"]] = relationship(
-        "Report", back_populates="workflow", lazy="selectin"
+        "Report", back_populates="workflow", lazy="select"
     )
     scraped_data: Mapped[list["ScrapedData"]] = relationship(
-        "ScrapedData", back_populates="workflow", lazy="selectin"
+        "ScrapedData", back_populates="workflow", lazy="select"
     )
     agent_logs: Mapped[list["AgentLog"]] = relationship(
-        "AgentLog", back_populates="workflow", lazy="selectin"
+        "AgentLog", back_populates="workflow", lazy="select"
     )
 
     def __repr__(self) -> str:

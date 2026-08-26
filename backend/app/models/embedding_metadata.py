@@ -1,5 +1,5 @@
 """
-AgentFlow AI - Embedding Metadata Model
+OpinionMap - Embedding metadata model for RAG vector records
 
 SQLAlchemy ORM model tracking vector embeddings stored in ChromaDB.
 """

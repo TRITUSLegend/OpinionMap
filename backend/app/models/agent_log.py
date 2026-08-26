@@ -1,5 +1,5 @@
 """
-AgentFlow AI - Agent Log Model
+OpinionMap - Agent execution log for the six-node LangGraph pipeline.
 
 SQLAlchemy ORM model for tracking AI agent execution history.
 """
@@ -7,7 +7,7 @@ SQLAlchemy ORM model for tracking AI agent execution history.
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, ForeignKey, Integer, JSON, String, Text, func
+from sqlalchemy import DateTime, ForeignKey, Index, Integer, JSON, String, Text, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
@@ -17,6 +17,10 @@ class AgentLog(Base):
     """Execution log entry for an individual AI agent within a workflow."""
 
     __tablename__ = "agent_logs"
+    __table_args__ = (
+        Index("ix_agent_logs_workflow_id", "workflow_id"),
+        Index("ix_agent_logs_user_id", "user_id"),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(
         primary_key=True, default=uuid.uuid4

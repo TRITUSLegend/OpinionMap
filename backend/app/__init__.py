@@ -1,1 +1,1 @@
-# AgentFlow AI - Application Package
+# OpinionMap - Application package

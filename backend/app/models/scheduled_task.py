@@ -1,5 +1,5 @@
 """
-AgentFlow AI - Scheduled Task Model
+OpinionMap - Scheduled task model (persisted; execution not yet implemented)
 
 SQLAlchemy ORM model for recurring analysis task scheduling.
 """

@@ -1,1 +1,1 @@
-# AgentFlow AI - Schemas Package
+# OpinionMap - Schemas package

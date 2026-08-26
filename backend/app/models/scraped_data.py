@@ -1,5 +1,5 @@
 """
-AgentFlow AI - Scraped Data Model
+OpinionMap - Raw scraped content collected from the configured data sources.
 
 SQLAlchemy ORM model for raw data collected from web sources.
 """
@@ -8,7 +8,6 @@ import uuid
 from datetime import datetime
 
 from sqlalchemy import (
-    Column,
     DateTime,
     Float,
     ForeignKey,
@@ -24,7 +23,7 @@ from app.database import Base
 
 
 class ScrapedData(Base):
-    """Raw scraped content from various data sources (Amazon, YouTube, Reddit)."""
+    """Raw scraped content from the configured data sources."""
 
     __tablename__ = "scraped_data"
     __table_args__ = (
@@ -39,7 +38,7 @@ class ScrapedData(Base):
     )
     source: Mapped[str] = mapped_column(
         String(50), nullable=False
-    )  # amazon / youtube / reddit
+    )  # hackernews / bluesky / news / guardian / youtube / reddit / twitter
     content: Mapped[str] = mapped_column(
         Text, nullable=False
     )

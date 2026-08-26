@@ -1,5 +1,5 @@
 """
-AgentFlow AI - Authentication Schemas
+OpinionMap - Authentication schemas
 
 Pydantic v2 models for user registration, login, and token responses.
 """
