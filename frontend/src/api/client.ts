@@ -5,6 +5,9 @@ export const apiClient = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
+  // Without a timeout a stalled backend response (e.g. during a workflow run)
+  // leaves the request pending forever and the UI stuck on its loading state.
+  timeout: 30000,
 });
 
 // Request interceptor to add the auth token header to requests

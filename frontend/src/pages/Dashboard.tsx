@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Workflow, FileText, Activity, PieChart, ChevronDown, Check } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart as RechartsPie, Pie, Cell } from 'recharts';
 import { MetricCard } from '../components/dashboard/MetricCard';
@@ -52,71 +52,96 @@ export const Dashboard = () => {
   const [loading, setLoading] = useState(true);
   const [chartLoading, setChartLoading] = useState(false);
 
-  // Load the workflow list once on mount
+  // Tracks which workflow id the charts currently hold data for, so the
+  // selection effect below does not re-request what the mount effect just loaded.
+  const loadedForRef = useRef<string | null | undefined>(undefined);
+
+  // Mount: load the workflow list and the dashboard data in a single pass.
   useEffect(() => {
-    const loadWorkflows = async () => {
+    let cancelled = false;
+
+    const init = async () => {
+      setLoading(true);
       try {
         const data = await fetchWorkflows() as { workflows?: WorkflowSummary[] };
         const completed = (data.workflows || []).filter((w) =>
           ['completed', 'auto_approved'].includes(w.status)
         );
+        if (cancelled) return;
+
         setWorkflows(completed);
-        // Auto-select the most recent completed workflow if any exist
-        if (completed.length > 0) {
-          setSelectedWorkflowId(completed[0].id);
-        }
+
+        // No completed workflows: nothing to chart, so skip the data requests.
+        if (completed.length === 0) return;
+
+        const wfId = completed[0].id;
+        setSelectedWorkflowId(wfId);
+        loadedForRef.current = wfId;
+
+        const [overviewRes, sentimentRes, trendsRes] = await Promise.allSettled([
+          fetchOverview(wfId),
+          fetchSentiment(wfId),
+          fetchTrends(wfId),
+        ]);
+        if (cancelled) return;
+
+        setMetrics(
+          overviewRes.status === 'fulfilled'
+            ? overviewRes.value
+            : { total_workflows: 0, completed_workflows: 0, total_reports: 0, avg_sentiment_score: 0, total_data_points: 0, active_schedules: 0 }
+        );
+        setSentimentData(
+          sentimentRes.status === 'fulfilled' && Array.isArray(sentimentRes.value)
+            ? sentimentRes.value : []
+        );
+        setTrendData(
+          trendsRes.status === 'fulfilled' && Array.isArray(trendsRes.value)
+            ? trendsRes.value : []
+        );
       } catch (e) {
-        console.warn('Failed to load workflows for selector', e);
+        if (!cancelled) console.warn('Dashboard init failed', e);
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+          setChartLoading(false);
+        }
       }
     };
-    loadWorkflows();
+
+    init();
+    return () => { cancelled = true; };
   }, []);
 
-  // Re-fetch charts whenever selected workflow changes
+  // Refetch only when the user actually picks a different workflow.
   useEffect(() => {
-    const loadDashboard = async () => {
-      // Don't fetch until we know whether there are workflows (avoid double-fetch)
-      if (workflows.length === 0 && selectedWorkflowId === null) {
-        // Still loading workflows list OR no workflows exist yet
-        setLoading(false);
-        return;
-      }
+    if (selectedWorkflowId === null) return;
+    if (selectedWorkflowId === loadedForRef.current) return;
 
+    let cancelled = false;
+
+    const refetch = async () => {
       setChartLoading(true);
-      try {
-        const wfId = selectedWorkflowId ?? undefined;
-        const [overviewRes, sentimentRes, trendsRes] =
-          await Promise.allSettled([
-            fetchOverview(wfId),
-            fetchSentiment(wfId),
-            fetchTrends(wfId),
-          ]);
+      loadedForRef.current = selectedWorkflowId;
+      const [overviewRes, sentimentRes, trendsRes] = await Promise.allSettled([
+        fetchOverview(selectedWorkflowId),
+        fetchSentiment(selectedWorkflowId),
+        fetchTrends(selectedWorkflowId),
+      ]);
+      if (cancelled) return;
 
-        if (overviewRes.status === 'fulfilled') {
-          setMetrics(overviewRes.value);
-        } else {
-          setMetrics({ total_workflows: 0, completed_workflows: 0, total_reports: 0, avg_sentiment_score: 0, total_data_points: 0, active_schedules: 0 });
-        }
-
-        if (sentimentRes.status === 'fulfilled') {
-          setSentimentData(Array.isArray(sentimentRes.value) ? sentimentRes.value : []);
-        } else {
-          setSentimentData([]);
-        }
-
-        if (trendsRes.status === 'fulfilled') {
-          setTrendData(Array.isArray(trendsRes.value) ? trendsRes.value : []);
-        } else {
-          setTrendData([]);
-        }
-      } finally {
-        setLoading(false);
-        setChartLoading(false);
+      if (overviewRes.status === 'fulfilled') setMetrics(overviewRes.value);
+      if (sentimentRes.status === 'fulfilled') {
+        setSentimentData(Array.isArray(sentimentRes.value) ? sentimentRes.value : []);
       }
+      if (trendsRes.status === 'fulfilled') {
+        setTrendData(Array.isArray(trendsRes.value) ? trendsRes.value : []);
+      }
+      setChartLoading(false);
     };
 
-    loadDashboard();
-  }, [selectedWorkflowId, workflows.length]);
+    refetch();
+    return () => { cancelled = true; };
+  }, [selectedWorkflowId]);
 
   const selectedWorkflow = workflows.find(w => w.id === selectedWorkflowId);
   const noData = !metrics || metrics.total_data_points === 0;

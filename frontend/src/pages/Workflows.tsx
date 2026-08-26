@@ -41,7 +41,7 @@ export const Workflows = () => {
         });
     };
     poll();
-    const interval = setInterval(poll, 10000); // Polling every 10s
+    const interval = setInterval(poll, 15000); // Polling every 15s
     return () => {
       cancelled = true;
       clearInterval(interval);

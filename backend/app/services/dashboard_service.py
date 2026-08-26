@@ -19,44 +19,74 @@ def _workflow_filter(user_id, workflow_id: Optional[UUID]):
 
 
 async def get_overview_metrics(db: AsyncSession, user_id, workflow_id: Optional[UUID] = None) -> dict:
+    """Return the six dashboard headline metrics in a single database round-trip.
+
+    This previously issued six sequential ``await db.execute(...)`` calls, i.e. six
+    round-trips per dashboard load. They are folded into one SELECT of scalar
+    subqueries instead.
+
+    Note: these cannot be parallelised with ``asyncio.gather`` -- an AsyncSession is
+    not safe for concurrent use and raises IllegalStateChangeError. One round-trip
+    is both faster and correct.
+    """
     wf_conditions = _workflow_filter(user_id, workflow_id)
 
-    # Always compute global counts for workflows and reports to reflect user's overall usage
-    wf_count = await db.execute(select(func.count(Workflow.id)).where(Workflow.user_id == user_id))
-    comp_wf_count = await db.execute(
-        select(func.count(Workflow.id)).where(
+    # Global counts for workflows and reports reflect the user's overall usage
+    total_workflows_sq = (
+        select(func.count(Workflow.id))
+        .where(Workflow.user_id == user_id)
+        .scalar_subquery()
+    )
+    completed_workflows_sq = (
+        select(func.count(Workflow.id))
+        .where(
             Workflow.user_id == user_id,
             Workflow.status.in_(['completed', 'auto_approved'])
         )
+        .scalar_subquery()
     )
-    rep_count = await db.execute(
-        select(func.count(Report.id)).where(Report.user_id == user_id)
+    total_reports_sq = (
+        select(func.count(Report.id))
+        .where(Report.user_id == user_id)
+        .scalar_subquery()
     )
-
-    data_count = await db.execute(
+    data_points_sq = (
         select(func.count(ScrapedData.id))
         .join(Workflow, ScrapedData.workflow_id == Workflow.id)
         .where(*wf_conditions)
+        .scalar_subquery()
     )
-
-    sched_count = await db.execute(
+    active_schedules_sq = (
         select(func.count(ScheduledTask.id))
         .where(ScheduledTask.user_id == user_id, ScheduledTask.is_active == True)
+        .scalar_subquery()
     )
-
-    avg_sent = await db.execute(
+    avg_sentiment_sq = (
         select(func.avg(ScrapedData.sentiment_score))
         .join(Workflow, ScrapedData.workflow_id == Workflow.id)
         .where(*wf_conditions)
+        .scalar_subquery()
     )
 
+    result = await db.execute(
+        select(
+            total_workflows_sq.label("total_workflows"),
+            completed_workflows_sq.label("completed_workflows"),
+            total_reports_sq.label("total_reports"),
+            data_points_sq.label("total_data_points"),
+            active_schedules_sq.label("active_schedules"),
+            avg_sentiment_sq.label("avg_sentiment_score"),
+        )
+    )
+    row = result.one()
+
     return {
-        "total_workflows": wf_count.scalar() or 0,
-        "completed_workflows": comp_wf_count.scalar() or 0,
-        "total_reports": rep_count.scalar() or 0,
-        "avg_sentiment_score": float(avg_sent.scalar() or 0.5),
-        "total_data_points": data_count.scalar() or 0,
-        "active_schedules": sched_count.scalar() or 0
+        "total_workflows": row.total_workflows or 0,
+        "completed_workflows": row.completed_workflows or 0,
+        "total_reports": row.total_reports or 0,
+        "avg_sentiment_score": float(row.avg_sentiment_score or 0.5),
+        "total_data_points": row.total_data_points or 0,
+        "active_schedules": row.active_schedules or 0
     }
 
 
