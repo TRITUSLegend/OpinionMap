@@ -59,7 +59,7 @@ Whether you're tracking competitor movements, analyzing market sentiment, or dis
 ## Features
 
 - 🤖 **Multi-Agent Orchestration** — LangGraph-powered agent workflows with dynamic task routing and parallel execution
-- 📊 **Multi-Source Intelligence** — YouTube and Reddit scraping (live or demo mode) with a local Twitter/X sentiment simulator; demo mode runs the full pipeline without external API keys
+- 📊 **Multi-Source Intelligence** — YouTube, Reddit, Hacker News, and Bluesky scraping with NewsData.io and The Guardian for journalism coverage; Twitter/X uses a local sentiment simulator. All sources fall back to realistic demo data — no API keys required to run the full pipeline.
 - 🧠 **RAG-Powered Analysis** — ChromaDB vector storage with context-aware retrieval for grounded insights
 - 🎨 **Interactive Dashboard** — React + TypeScript UI with real-time data visualization and workflow management
 - 🔄 **Workflow Management** — Create, monitor, and control complex multi-agent analysis pipelines
@@ -122,6 +122,10 @@ graph TB
     subgraph External Sources
         YT[YouTube API]
         RD[Reddit API]
+        HN[Hacker News]
+        BSK[Bluesky AT Protocol]
+        NDI[NewsData.io]
+        GRD[The Guardian API]
         TW["Twitter/X (Simulated)"]
     end
 
@@ -132,7 +136,7 @@ graph TB
     WF --> LG
     LG --> YTA & RDA & TWA & ANA
     YTA --> YT
-    RDA --> RD
+    RDA --> RD & HN & BSK & NDI & GRD
     TWA --> TW
     ANA --> GEM
     ANA --> CR

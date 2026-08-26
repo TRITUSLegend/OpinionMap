@@ -2,9 +2,37 @@ import { useState } from 'react';
 import { X } from 'lucide-react';
 import { createWorkflow } from '../../api/client';
 
+const SOURCE_LABELS: Record<string, string> = {
+  twitter: 'Twitter/X',
+  youtube: 'YouTube',
+  reddit: 'Reddit',
+  hackernews: 'Hacker News',
+  bluesky: 'Bluesky',
+  news: 'News',
+  guardian: 'Guardian',
+};
+
+const SOURCE_DESCRIPTIONS: Record<string, string> = {
+  twitter: 'Simulated',
+  youtube: 'Live / Demo',
+  reddit: 'Live / Demo',
+  hackernews: 'Live (free)',
+  bluesky: 'Live (free)',
+  news: 'Live / Demo',
+  guardian: 'Live / Demo',
+};
+
 export const NewWorkflowModal = ({ onClose, onSuccess }: { onClose: () => void, onSuccess: () => void }) => {
   const [query, setQuery] = useState('');
-  const [sources, setSources] = useState({ twitter: true, youtube: true, reddit: true });
+  const [sources, setSources] = useState({
+    twitter: true,
+    youtube: true,
+    reddit: true,
+    hackernews: true,
+    bluesky: true,
+    news: true,
+    guardian: true,
+  });
   const [submitting, setSubmitting] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -54,16 +82,19 @@ export const NewWorkflowModal = ({ onClose, onSuccess }: { onClose: () => void, 
             <label className="block text-sm font-medium text-gray-300 mb-2">
               Data Sources
             </label>
-            <div className="flex gap-4">
-              {['twitter', 'youtube', 'reddit'].map((source) => (
-                <label key={source} className="flex items-center gap-2 cursor-pointer">
-                  <input 
-                    type="checkbox" 
+            <div className="grid grid-cols-2 gap-3">
+              {Object.keys(sources).map((source) => (
+                <label key={source} className="flex items-center gap-2 cursor-pointer group">
+                  <input
+                    type="checkbox"
                     checked={sources[source as keyof typeof sources]}
-                    onChange={(e) => setSources({...sources, [source]: e.target.checked})}
-                    className="rounded border-gray-600 bg-black/20 text-accent focus:ring-accent w-5 h-5 accent-accent"
+                    onChange={(e) => setSources({ ...sources, [source]: e.target.checked })}
+                    className="rounded border-gray-600 bg-black/20 text-accent focus:ring-accent w-4 h-4 accent-accent"
                   />
-                  <span className="capitalize">{source}</span>
+                  <div>
+                    <span className="text-sm font-medium">{SOURCE_LABELS[source]}</span>
+                    <span className="text-xs text-gray-500 ml-1">({SOURCE_DESCRIPTIONS[source]})</span>
+                  </div>
                 </label>
               ))}
             </div>

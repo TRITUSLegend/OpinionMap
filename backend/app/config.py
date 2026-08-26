@@ -38,6 +38,19 @@ class Settings(BaseSettings):
     REDDIT_CLIENT_SECRET: str = ""
     REDDIT_USER_AGENT: str = "AgentFlow/1.0"
 
+    # NewsData.io API
+    NEWSDATA_API_KEY: str = ""
+
+    # The Guardian API
+    GUARDIAN_API_KEY: str = ""
+
+    # Bluesky (AT Protocol) -- required for live search
+    # app.bsky.feed.searchPosts returns 403 unauthenticated; without these the
+    # Bluesky scraper falls back to mock data
+    BLUESKY_IDENTIFIER: str = ""    # your handle, e.g. yourname.bsky.social
+    BLUESKY_APP_PASSWORD: str = ""  # Bluesky app password (not your main password)
+    # Hacker News API needs no credentials -- no field needed
+
     # ChromaDB
     CHROMA_PERSIST_DIR: str = "./chroma_data"
 

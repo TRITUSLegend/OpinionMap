@@ -4,6 +4,10 @@ from app.agents.state import AgentState
 from app.scrapers.twitter import TwitterScraper
 from app.scrapers.youtube import YouTubeScraper
 from app.scrapers.reddit import RedditScraper
+from app.scrapers.hackernews import HackerNewsScraper
+from app.scrapers.bluesky import BlueskyScraper
+from app.scrapers.newsdata import NewsdataScraper
+from app.scrapers.guardian import GuardianScraper
 from app.core.logging import get_logger
 
 logger = get_logger(__name__)
@@ -26,6 +30,14 @@ async def research_node(state: AgentState) -> AgentState:
         scrapers.append(YouTubeScraper().scrape(query))
     if "reddit" in sources:
         scrapers.append(RedditScraper().scrape(query))
+    if "hackernews" in sources:
+        scrapers.append(HackerNewsScraper().scrape(query))
+    if "bluesky" in sources:
+        scrapers.append(BlueskyScraper().scrape(query))
+    if "news" in sources:
+        scrapers.append(NewsdataScraper().scrape(query))
+    if "guardian" in sources:
+        scrapers.append(GuardianScraper().scrape(query))
         
     try:
         results = await asyncio.gather(*scrapers, return_exceptions=True)
