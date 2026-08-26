@@ -22,8 +22,18 @@ async def list_schedules(db: AsyncSession, user_id) -> list[ScheduledTask]:
     result = await db.execute(select(ScheduledTask).where(ScheduledTask.user_id == user_id))
     return list(result.scalars().all())
 
-async def deactivate_schedule(db: AsyncSession, schedule_id) -> bool:
-    result = await db.execute(select(ScheduledTask).where(ScheduledTask.id == schedule_id))
+async def deactivate_schedule(db: AsyncSession, schedule_id, user_id) -> bool:
+    """Deactivate a schedule owned by *user_id*.
+
+    Scoped by user_id as well as id so one user cannot deactivate another
+    user's schedule by guessing its id.
+    """
+    result = await db.execute(
+        select(ScheduledTask).where(
+            ScheduledTask.id == schedule_id,
+            ScheduledTask.user_id == user_id,
+        )
+    )
     schedule = result.scalar_one_or_none()
     if schedule:
         schedule.is_active = False

@@ -8,6 +8,9 @@ from app.models.user import User
 from app.schemas.schedule import ScheduleCreate, ScheduleResponse
 from app.services import schedule_service
 
+# Schedule endpoints defined -- background execution not yet implemented.
+# ScheduledTask rows are persisted and listed correctly, but nothing reads
+# cron_expression / next_run_at to actually run them on a timer.
 router = APIRouter()
 
 @router.post("/", response_model=ScheduleResponse)
@@ -33,7 +36,7 @@ async def deactivate_schedule(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    success = await schedule_service.deactivate_schedule(db, schedule_id)
+    success = await schedule_service.deactivate_schedule(db, schedule_id, current_user.id)
     if not success:
         raise HTTPException(status_code=404, detail="Schedule not found")
     return {"success": True}
