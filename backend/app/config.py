@@ -14,6 +14,11 @@ class Settings(BaseSettings):
         env_file=".env",
         env_file_encoding="utf-8",
         case_sensitive=False,
+        # .env is shared with docker-compose, so it holds keys this class does not
+        # model (POSTGRES_*, PROMETHEUS_PORT, GRAFANA_*). pydantic-settings loads
+        # every key from a dotenv file and validates it, so without extra="ignore"
+        # those keys raise extra_forbidden and the app fails to start.
+        extra="ignore",
     )
 
     # Database
@@ -28,7 +33,9 @@ class Settings(BaseSettings):
     # JWT Authentication
     JWT_SECRET_KEY: str = "super-secret-key-change-in-production"
     JWT_ALGORITHM: str = "HS256"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
+    # 480 minutes (8 hours): the previous 30-minute expiry logged users out
+    # mid-session, and there is no refresh-token flow to recover from it.
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 480
 
     # YouTube Data API
     YOUTUBE_API_KEY: str = ""
@@ -36,7 +43,7 @@ class Settings(BaseSettings):
     # Reddit API
     REDDIT_CLIENT_ID: str = ""
     REDDIT_CLIENT_SECRET: str = ""
-    REDDIT_USER_AGENT: str = "AgentFlow/1.0"
+    REDDIT_USER_AGENT: str = "OpinionMap/1.0"
 
     # NewsData.io API
     NEWSDATA_API_KEY: str = ""
@@ -53,6 +60,12 @@ class Settings(BaseSettings):
 
     # ChromaDB
     CHROMA_PERSIST_DIR: str = "./chroma_data"
+
+    # ChromaDB connection (set by Docker Compose). Declared so the values
+    # compose injects are recognised rather than ignored; the RAG store
+    # currently uses PersistentClient(CHROMA_PERSIST_DIR), not this host/port.
+    CHROMA_HOST: str = "localhost"
+    CHROMA_PORT: int = 8000
 
     # CORS
     CORS_ORIGINS: list[str] = ["http://localhost", "http://localhost:3000", "https://localhost"]
