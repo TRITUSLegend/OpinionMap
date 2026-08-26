@@ -30,7 +30,15 @@ app.mount("/metrics", metrics_app)
 @app.on_event("startup")
 async def startup_event():
     logger.info("Starting up application...")
+
+    # Configure Gemini SDK once at startup -- agents reuse this global config
+    if settings.GEMINI_API_KEY:
+        import google.generativeai as genai
+        genai.configure(api_key=settings.GEMINI_API_KEY)
+        logger.info("Gemini SDK configured at startup")
+
     await init_db()
+    logger.info(f"{settings.APP_NAME} started successfully")
 
 # Add routers with try/except to avoid breaking if not created yet
 try:

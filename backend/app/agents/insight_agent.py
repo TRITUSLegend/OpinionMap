@@ -1,11 +1,11 @@
 import time
-import asyncio
 import json
 import google.generativeai as genai
 from app.config import settings
 from app.agents.state import AgentState
 from app.core.logging import get_logger
 from app.core.sanitizer import safe_query_for_prompt, extract_json
+from app.core.retry import gemini_backoff
 
 logger = get_logger(__name__)
 
@@ -22,7 +22,6 @@ async def insight_node(state: AgentState) -> AgentState:
     # Try Gemini if available
     if settings.GEMINI_API_KEY:
         try:
-            genai.configure(api_key=settings.GEMINI_API_KEY)
             model = genai.GenerativeModel(
                 'gemini-2.5-flash',
                 generation_config={"response_mime_type": "application/json"}
@@ -62,12 +61,7 @@ CRITICAL: Use REAL entity names. Do NOT use placeholders like "Leading competito
             state["pain_points"] = data.get("pain_points", [])
             
         except Exception as e:
-            logger.error(f"Error using Gemini for insights: {e}")
-            if "429" in str(e) or "ResourceExhausted" in str(e) or "quota" in str(e).lower():
-                logger.warning("Gemini API Rate Limit hit! Waiting 60 seconds...")
-                await asyncio.sleep(60)
-            else:
-                await asyncio.sleep(2)
+            await gemini_backoff(attempt=0, error=e, context="insight_node")
             _fallback_insights(state)
     else:
         _fallback_insights(state)

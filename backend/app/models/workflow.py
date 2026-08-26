@@ -29,7 +29,7 @@ class Workflow(Base):
     )
     status: Mapped[str] = mapped_column(
         String(50), default="pending"
-    )  # pending / running / completed / failed
+    )  # pending / running / completed / auto_approved / failed
     sources: Mapped[dict | None] = mapped_column(
         JSON, nullable=True
     )

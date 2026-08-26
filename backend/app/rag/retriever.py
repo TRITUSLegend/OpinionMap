@@ -11,7 +11,7 @@ class RAGRetriever:
         self.embedding_gen = EmbeddingGenerator()
         self.vector_store = VectorStore()
         if settings.GEMINI_API_KEY:
-            genai.configure(api_key=settings.GEMINI_API_KEY)
+            # genai.configure() runs once at app startup (see app/main.py)
             self.model = genai.GenerativeModel('gemini-2.5-flash')
         else:
             self.model = None

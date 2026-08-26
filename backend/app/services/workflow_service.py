@@ -35,19 +35,32 @@ async def list_workflows(db: AsyncSession, user_id, skip: int = 0, limit: int = 
     return workflows, total
 
 async def delete_workflow(db: AsyncSession, workflow_id) -> bool:
-    # Cascade delete all related records to avoid foreign key violations
+    # Cascade delete all related records atomically.
+    # All six DELETEs share the session's transaction and are committed together,
+    # with an explicit rollback on any failure so a partial-delete state can never
+    # be committed.
+    #
+    # NOTE: `async with db.begin()` is deliberately NOT used here. The calling
+    # route runs get_workflow() (a SELECT) before this, which autobegins a
+    # transaction on the session; db.begin() would then raise
+    # InvalidRequestError("A transaction is already begun on this Session").
     from app.models.report import Report
     from app.models.scraped_data import ScrapedData
     from app.models.agent_log import AgentLog
     from app.models.analytics import Analytics
     from app.models.embedding_metadata import EmbeddingMetadata
-    
-    await db.execute(delete(EmbeddingMetadata).where(EmbeddingMetadata.workflow_id == workflow_id))
-    await db.execute(delete(Analytics).where(Analytics.workflow_id == workflow_id))
-    await db.execute(delete(AgentLog).where(AgentLog.workflow_id == workflow_id))
-    await db.execute(delete(ScrapedData).where(ScrapedData.workflow_id == workflow_id))
-    await db.execute(delete(Report).where(Report.workflow_id == workflow_id))
-    
-    result = await db.execute(delete(Workflow).where(Workflow.id == workflow_id))
-    await db.commit()
+
+    try:
+        await db.execute(delete(EmbeddingMetadata).where(EmbeddingMetadata.workflow_id == workflow_id))
+        await db.execute(delete(Analytics).where(Analytics.workflow_id == workflow_id))
+        await db.execute(delete(AgentLog).where(AgentLog.workflow_id == workflow_id))
+        await db.execute(delete(ScrapedData).where(ScrapedData.workflow_id == workflow_id))
+        await db.execute(delete(Report).where(Report.workflow_id == workflow_id))
+
+        result = await db.execute(delete(Workflow).where(Workflow.id == workflow_id))
+        await db.commit()
+    except Exception:
+        await db.rollback()
+        raise
+
     return result.rowcount > 0

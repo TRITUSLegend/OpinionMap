@@ -1,11 +1,11 @@
 import time
-import asyncio
 import json
 import google.generativeai as genai
 from app.config import settings
 from app.agents.state import AgentState
 from app.core.logging import get_logger
 from app.core.sanitizer import safe_query_for_prompt, extract_json
+from app.core.retry import gemini_backoff
 
 logger = get_logger(__name__)
 
@@ -23,7 +23,6 @@ async def report_node(state: AgentState) -> AgentState:
     
     if settings.GEMINI_API_KEY:
         try:
-            genai.configure(api_key=settings.GEMINI_API_KEY)
             model = genai.GenerativeModel(
                 'gemini-2.5-flash',
                 generation_config={"response_mime_type": "application/json"}
@@ -125,14 +124,8 @@ Return JSON matching this exact schema:
                 state["report"] = data
                 
         except Exception as e:
-            logger.error(f"Error generating report: {e}")
-            
-            if "429" in str(e) or "ResourceExhausted" in str(e) or "quota" in str(e).lower():
-                logger.warning("Gemini API Rate Limit hit! Waiting 60 seconds for quota to reset...")
-                await asyncio.sleep(60)
-            else:
-                await asyncio.sleep(3)
-                
+            await gemini_backoff(attempt=0, error=e, context="report_node primary")
+
             # Retry with a simpler prompt
             try:
                 simple_model = genai.GenerativeModel(
@@ -148,7 +141,7 @@ Return JSON with keys: title (string), tagline (string), executive_summary (stri
                 state["report"] = data
                 logger.info("Simple fallback Gemini report generated")
             except Exception as e2:
-                logger.error(f"Simple fallback also failed: {e2}")
+                await gemini_backoff(attempt=1, error=e2, context="report_node retry")
                 _fallback_report(state)
     else:
         _fallback_report(state)

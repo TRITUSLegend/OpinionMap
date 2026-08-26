@@ -5,6 +5,13 @@ from app.core.logging import get_logger
 logger = get_logger(__name__)
 
 class TrendAnalyzer:
+    _instance = None
+
+    def __new__(cls):
+        if cls._instance is None:
+            cls._instance = super().__new__(cls)
+        return cls._instance
+
     def analyze_trends(self, data: List[Dict[str, Any]]) -> Dict[str, Any]:
         """
         Analyzes sentiment over time based on provided data points.
