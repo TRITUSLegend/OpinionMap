@@ -11,7 +11,7 @@ interface SidebarProps {
 export const Sidebar = ({ isOpen, setIsOpen }: SidebarProps) => {
   const { user, logout } = useAuth();
   const links = [
-    { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
+    { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
     { to: '/workflows', icon: Workflow, label: 'Workflows' },
     { to: '/reports', icon: FileText, label: 'Reports' },
     { to: '/users', icon: Users, label: 'Users', adminOnly: true },

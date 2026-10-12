@@ -1,0 +1,48 @@
+/* Landing page styles: imported only by the lazy landing chunk. */
+
+.landing {
+  min-height: 100vh;
+  background-color: var(--auth-panel);
+  color: var(--fg);
+}
+
+.lp-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 24px;
+}
+
+.lp-nav-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.lp-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 40px;
+  padding: 0 16px;
+  border-radius: 10px;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.lp-btn-primary {
+  background-color: var(--ember);
+  color: var(--auth-panel);
+}
+
+.lp-btn-ghost {
+  color: var(--fg);
+  border: 1px solid var(--auth-frame);
+}
+
+.lp-title {
+  padding: 96px 24px;
+  font-family: var(--font-serif);
+  font-size: 3rem;
+  text-align: center;
+}

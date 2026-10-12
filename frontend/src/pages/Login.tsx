@@ -68,7 +68,7 @@ export const Login = () => {
       const data = await loginFn(formData);
       login(data.access_token, data.user);
       toast(`Signed in as ${data.user.full_name || data.user.email}`);
-      navigate('/');
+      navigate('/dashboard');
     } catch (err) {
       const { message, fieldErrors } = describeApiError(err, isAdminLogin ? 'admin-login' : 'login');
       form.setServerErrors({ email: fieldErrors.username, password: fieldErrors.password });
