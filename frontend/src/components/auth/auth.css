@@ -418,9 +418,12 @@
   .auth-card {
     display: grid;
     grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
+    grid-template-rows: minmax(0, 1fr);
     max-width: 1080px;
-    /* Roughly 16:10, but never taller than the viewport allows. */
-    height: clamp(560px, calc(100dvh - 64px), 675px);
+    /* Roughly 16:10. A taller form (signup with an error banner) grows the
+       card up to the viewport; beyond that the form scrolls inside it. */
+    min-height: clamp(560px, calc(100dvh - 64px), 675px);
+    max-height: calc(100dvh - 64px);
     background-color: transparent;
   }
 
@@ -432,7 +435,7 @@
 
   .auth-body {
     max-width: 22rem;
-    padding-block: 64px 16px;
+    padding-block: 48px 12px;
   }
 
   .auth-title {
