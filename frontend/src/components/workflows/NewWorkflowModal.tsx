@@ -33,7 +33,7 @@ const SOURCE_DESCRIPTIONS: Record<string, string> = {
 const EXIT_MS = 140;
 const FOCUSABLE = 'button:not([disabled]), input:not([disabled]), [href], [tabindex]:not([tabindex="-1"])';
 
-export const NewWorkflowModal = ({ onClose, onSuccess }: { onClose: () => void, onSuccess: () => void }) => {
+export const NewWorkflowModal = ({ onClose, onSuccess, initialQuery = '' }: { onClose: () => void, onSuccess: () => void, initialQuery?: string }) => {
   const [sources, setSources] = useState({
     twitter: true,
     youtube: true,
@@ -50,7 +50,7 @@ export const NewWorkflowModal = ({ onClose, onSuccess }: { onClose: () => void, 
   const submittingRef = useRef(false);
   const dialogRef = useRef<HTMLDivElement>(null);
   const toast = useToast();
-  const form = useFormFields({ query: '' }, { query: validateQuery });
+  const form = useFormFields({ query: initialQuery }, { query: validateQuery });
 
   const activeSources = Object.entries(sources)
     .filter(([, isActive]) => isActive)

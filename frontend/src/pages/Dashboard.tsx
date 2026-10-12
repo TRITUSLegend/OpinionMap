@@ -1,8 +1,11 @@
 import { useState, useEffect, useRef } from 'react';
-import { Workflow, FileText, Activity, PieChart, ChevronDown, Check, ChartScatter } from 'lucide-react';
+import { Workflow, FileText, Activity, PieChart, ChevronDown, Check } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart as RechartsPie, Pie, Cell } from 'recharts';
 import { MetricCard } from '../components/dashboard/MetricCard';
 import { AnimatedNumber } from '../components/dashboard/AnimatedNumber';
+import { FirstRunPanel, RunStatusPanel } from '../components/dashboard/FirstRun';
+import { NewWorkflowModal } from '../components/workflows/NewWorkflowModal';
+import { useToast } from '../components/ui/toast-context';
 import { fetchOverview, fetchSentiment, fetchTrends, fetchWorkflows } from '../api/client';
 import { useChartColors, type ChartColors } from '../context/theme-context';
 
@@ -37,6 +40,11 @@ interface TrendPoint {
   neutral: number;
 }
 
+const FINISHED = ['completed', 'auto_approved'];
+const IN_PROGRESS = ['pending', 'running'];
+// While a first run is going, check for its results this often.
+const POLL_MS = 15000;
+
 const SENTIMENT_SERIES = [
   { key: 'positive', label: 'Positive' },
   { key: 'neutral', label: 'Neutral' },
@@ -64,6 +72,8 @@ const tooltipStyle = {
 };
 
 export const Dashboard = () => {
+  // Every run the user has, whatever its status; `workflows` keeps the finished ones.
+  const [runs, setRuns] = useState<WorkflowSummary[]>([]);
   const [workflows, setWorkflows] = useState<WorkflowSummary[]>([]);
   const [selectedWorkflowId, setSelectedWorkflowId] = useState<string | null>(null);
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -73,7 +83,15 @@ export const Dashboard = () => {
   const [trendData, setTrendData] = useState<TrendPoint[]>([]);
   const [loading, setLoading] = useState(true);
   const [chartLoading, setChartLoading] = useState(false);
+  const [loadFailed, setLoadFailed] = useState(false);
+  // Bumped to run the full load again (after a retry, or when a first run finishes).
+  const [reloadKey, setReloadKey] = useState(0);
+  // The new-research dialog, opened from the empty states with an optional topic.
+  const [newRun, setNewRun] = useState<{ query: string } | null>(null);
+  const statusHeadingRef = useRef<HTMLHeadingElement>(null);
+  const focusStatusRef = useRef(false);
   const colors = useChartColors();
+  const toast = useToast();
 
   // Tracks which workflow id the charts currently hold data for, so the
   // selection effect below does not re-request what the mount effect just loaded.
@@ -85,13 +103,14 @@ export const Dashboard = () => {
 
     const init = async () => {
       setLoading(true);
+      setLoadFailed(false);
       try {
         const data = await fetchWorkflows() as { workflows?: WorkflowSummary[] };
-        const completed = (data.workflows || []).filter((w) =>
-          ['completed', 'auto_approved'].includes(w.status)
-        );
+        const all = data.workflows || [];
+        const completed = all.filter((w) => FINISHED.includes(w.status));
         if (cancelled) return;
 
+        setRuns(all);
         setWorkflows(completed);
 
         // No completed workflows: nothing to chart, so skip the data requests.
@@ -122,7 +141,10 @@ export const Dashboard = () => {
             ? trendsRes.value : []
         );
       } catch (e) {
-        if (!cancelled) console.warn('Dashboard init failed', e);
+        if (!cancelled) {
+          console.warn('Dashboard init failed', e);
+          setLoadFailed(true);
+        }
       } finally {
         if (!cancelled) {
           setLoading(false);
@@ -133,7 +155,7 @@ export const Dashboard = () => {
 
     init();
     return () => { cancelled = true; };
-  }, []);
+  }, [reloadKey]);
 
   // Refetch only when the user actually picks a different workflow.
   useEffect(() => {
@@ -169,6 +191,57 @@ export const Dashboard = () => {
   const selectedWorkflow = workflows.find(w => w.id === selectedWorkflowId);
   const noData = !metrics || metrics.total_data_points === 0;
 
+  const inProgress = runs.filter((w) => IN_PROGRESS.includes(w.status));
+  const phase = loadFailed ? 'error'
+    : workflows.length > 0 ? 'ready'
+    : runs.length === 0 ? 'first-run'
+    : inProgress.length > 0 ? 'running'
+    : 'none-finished';
+
+  // While a run is going and nothing has finished, check back now and then;
+  // once a run finishes, load the dashboard for it.
+  useEffect(() => {
+    if (phase !== 'running') return;
+    let cancelled = false;
+    const id = window.setInterval(() => {
+      if (document.hidden) return;
+      fetchWorkflows()
+        .then((data: { workflows?: WorkflowSummary[] }) => {
+          if (cancelled) return;
+          const all = data.workflows || [];
+          const done = all.find((w) => FINISHED.includes(w.status));
+          if (done) {
+            toast(`Results ready for “${done.query}”`);
+            setReloadKey((k) => k + 1);
+          } else {
+            setRuns(all);
+          }
+        })
+        .catch(() => undefined); // try again on the next tick
+    }, POLL_MS);
+    return () => {
+      cancelled = true;
+      window.clearInterval(id);
+    };
+  }, [phase, toast]);
+
+  // The button that opened the dialog is gone once a run starts, so focus
+  // moves to the heading that replaced it.
+  useEffect(() => {
+    if (phase === 'running' && focusStatusRef.current) {
+      focusStatusRef.current = false;
+      statusHeadingRef.current?.focus();
+    }
+  }, [phase]);
+
+  const handleRunStarted = () => {
+    setNewRun(null);
+    focusStatusRef.current = true;
+    fetchWorkflows()
+      .then((data: { workflows?: WorkflowSummary[] }) => setRuns(data.workflows || []))
+      .catch(() => undefined);
+  };
+
   if (loading) {
     return (
       <div className="space-y-8" role="status" aria-label="Loading dashboard">
@@ -197,7 +270,9 @@ export const Dashboard = () => {
           <p className="text-muted mt-1 text-sm">
             {selectedWorkflow
               ? <>Showing results for <span className="text-fg font-medium">“{selectedWorkflow.query}”</span></>
-              : 'Select a workflow to see its analysis'}
+              : workflows.length > 0
+                ? 'Select a workflow to see its analysis'
+                : 'Results from your research runs show up here'}
           </p>
         </div>
 
@@ -252,13 +327,35 @@ export const Dashboard = () => {
         </div>
       </div>
 
-      {/* No workflows state */}
-      {workflows.length === 0 && (
-        <div className="card p-12 text-center">
-          <ChartScatter className="w-8 h-8 mx-auto mb-4 text-subtle" aria-hidden="true" />
-          <h3 className="text-lg font-semibold mb-1">No completed workflows yet</h3>
-          <p className="text-muted text-sm">Create a new research workflow to start seeing analytics here.</p>
+      {phase === 'error' && (
+        <div className="card p-6 md:p-10" role="alert">
+          <h2 className="text-base font-semibold text-fg">Couldn't load your research runs</h2>
+          <p className="text-muted text-sm mt-1">Check your connection, then try again.</p>
+          <button type="button" className="btn btn-secondary mt-5" onClick={() => setReloadKey((k) => k + 1)}>
+            Try again
+          </button>
         </div>
+      )}
+
+      {phase === 'first-run' && (
+        <FirstRunPanel onStart={(query = '') => setNewRun({ query })} />
+      )}
+
+      {(phase === 'running' || phase === 'none-finished') && (
+        <RunStatusPanel
+          runs={runs}
+          inProgress={inProgress}
+          onStart={() => setNewRun({ query: '' })}
+          headingRef={statusHeadingRef}
+        />
+      )}
+
+      {newRun && (
+        <NewWorkflowModal
+          initialQuery={newRun.query}
+          onClose={() => setNewRun(null)}
+          onSuccess={handleRunStarted}
+        />
       )}
 
       {workflows.length > 0 && (
