@@ -3,7 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { UserPlus } from 'lucide-react';
 import { useAuth } from '../context/auth-context';
 import { login as apiLogin, register as apiRegister, wakeServer } from '../api/client';
-import { AuthShell } from '../components/layout/AuthShell';
+import { AuthShell } from '../components/auth/AuthShell';
 import { Field } from '../components/ui/Field';
 import { FormMessage } from '../components/ui/FormMessage';
 import { PasswordInput } from '../components/ui/PasswordInput';
@@ -96,7 +96,7 @@ export const Signup = () => {
         <FormMessage key={formError.key} tone="error" className="mb-5">{formError.text}</FormMessage>
       )}
 
-      <form onSubmit={handleSubmit} noValidate className="space-y-4">
+      <form onSubmit={handleSubmit} noValidate className="auth-form space-y-5">
         <Field id={FIELD_IDS.fullName} label="Full name" error={form.errorFor('fullName')}>
           {(control) => (
             <input {...control} {...form.bind('fullName')} type="text" autoComplete="name" className="input" placeholder="Jane Doe" />
@@ -130,7 +130,7 @@ export const Signup = () => {
           )}
         </Field>
 
-        <SubmitButton loading={submitting} loadingLabel="Creating account…" className="w-full min-h-10 mt-2">
+        <SubmitButton loading={submitting} loadingLabel="Creating account…" className="w-full mt-2">
           <UserPlus className="w-4 h-4" aria-hidden="true" />
           Create account
         </SubmitButton>
