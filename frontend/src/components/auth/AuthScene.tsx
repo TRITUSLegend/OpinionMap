@@ -73,7 +73,6 @@ export const AuthScene = () => {
       </div>
 
       <div className="auth-sample auth-ambient">
-        <p className="auth-sample-caption">Sample preview</p>
         <p className="auth-sample-topic">Four-day work week</p>
         <div className="auth-sample-bar">
           <span className="bg-positive" style={{ width: '52%' }} />

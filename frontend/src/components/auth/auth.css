@@ -321,13 +321,7 @@
   border: 1px solid var(--auth-frame);
 }
 
-.auth-sample-caption {
-  font-size: 0.6875rem;
-  color: var(--auth-muted);
-}
-
 .auth-sample-topic {
-  margin-top: 4px;
   font-size: 0.875rem;
   font-weight: 500;
   color: var(--fg);
