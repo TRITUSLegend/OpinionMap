@@ -203,6 +203,20 @@ docker compose up -d --build
 ```
 Your secure deployment will now be running and accessible at `https://localhost` (or your public domain).
 
+### Hosted Deployment (Netlify + Render)
+
+- **Frontend (Netlify):** set `VITE_API_URL` to the backend's `/api` URL at build time.
+- **Backend (Render):** set `JWT_SECRET_KEY` to a random value. The app logs a warning at startup
+  if it is still the built-in default. Set `CORS_ORIGINS` to include the Netlify URL.
+- **Keep the free tier awake:** a free Render instance sleeps after about 15 minutes idle, and the
+  first request afterwards has been measured at more than 90 seconds, which is what makes the first
+  login slow. Point an uptime monitor (UptimeRobot, Better Stack, cron-job.org) at `GET` or `HEAD`
+  `https://<your-backend>/`, every 10–14 minutes. That endpoint does no database or auth work.
+  One always-on free service stays within Render's monthly free-instance hours.
+- **Password hashing cost:** `BCRYPT_ROUNDS` (default 12, allowed 10–15). Each step doubles the CPU
+  time of every login. Existing users are re-hashed at the new cost on their next login, so it can
+  be changed at any time.
+
 ### Local Development (Using Make)
 
 ```bash
@@ -227,7 +241,8 @@ OpinionMap provides interactive API documentation:
 |:---|:---|:---|
 | `POST` | `/api/auth/register` | Register a new user account |
 | `POST` | `/api/auth/login` | Authenticate and receive JWT token |
-| `GET` | `/api/auth/users` | List users (authenticated) |
+| `GET` | `/api/auth/me` | Current user's profile |
+| `GET` | `/api/auth/users` | List users (admin only) |
 | `POST` | `/api/workflows/` | Create and run a new analysis workflow |
 | `GET` | `/api/workflows/` | List all workflows for the current user |
 | `GET` | `/api/workflows/{id}` | Get workflow status and results |
@@ -264,7 +279,7 @@ OpinionMap/
 │   │   ├── services/          # Business logic layer
 │   │   ├── database.py        # Database connection setup
 │   │   └── main.py            # FastAPI application entry
-│   ├── tests/                 # (not yet implemented — planned)
+│   ├── tests/                 # pytest suite (auth)
 │   ├── alembic.ini            # Alembic configuration
 │   ├── Dockerfile             # Backend container
 │   └── requirements.txt       # Python dependencies
@@ -292,7 +307,7 @@ OpinionMap/
 └── README.md                  # This file
 ```
 
-> **Note on tests:** an automated backend test suite is not yet implemented. `pytest` and `pytest-asyncio` are already declared in `backend/requirements.txt`, so `backend/tests/` can be added without further setup. Until then `make test` and `make test-cov` print a notice instead of running anything, and `make format` / `make lint` do the same (black, isort, ruff and mypy are intentionally not runtime dependencies).
+> **Note on tests:** `backend/tests/` covers authentication (login, registration, user listing) and runs with `make test` or `cd backend && pytest`; it uses a throwaway SQLite database. `make test-cov`, `make format` and `make lint` still print a notice instead of running anything (pytest-cov, black, isort, ruff and mypy are intentionally not runtime dependencies).
 
 ---
 

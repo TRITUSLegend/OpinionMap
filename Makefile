@@ -28,11 +28,11 @@ up: ## Start all services in background
 down: ## Stop all services
 	docker-compose down
 
-test: ## Run backend tests (test suite not yet implemented)
-	@echo "Note: backend/tests/ does not exist yet. No tests to run."
+test: ## Run backend tests (auth suite, throwaway SQLite database)
+	cd backend && python -m pytest
 
-test-cov: ## Run tests with coverage (test suite not yet implemented)
-	@echo "Note: backend/tests/ does not exist yet. No tests to run."
+test-cov: ## Run tests with coverage (pytest-cov not configured)
+	@echo "Note: pytest-cov is not in requirements.txt. Install it manually and run: cd backend && pytest --cov=app"
 
 clean: ## Stop services and clean artifacts
 	docker-compose down -v

@@ -1,6 +1,14 @@
-import { useState } from 'react';
-import { X } from 'lucide-react';
+import { useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
+import { CircleAlert, X } from 'lucide-react';
 import { createWorkflow } from '../../api/client';
+import { Field } from '../ui/Field';
+import { FormMessage } from '../ui/FormMessage';
+import { SubmitButton } from '../ui/SubmitButton';
+import { useToast } from '../ui/toast-context';
+import { useFormFields } from '../../hooks/useFormFields';
+import { describeApiError } from '../../lib/api-errors';
+import { validateQuery } from '../../lib/validation';
 
 const SOURCE_LABELS: Record<string, string> = {
   twitter: 'Twitter/X',
@@ -22,8 +30,10 @@ const SOURCE_DESCRIPTIONS: Record<string, string> = {
   guardian: 'Live / Demo',
 };
 
+const EXIT_MS = 140;
+const FOCUSABLE = 'button:not([disabled]), input:not([disabled]), [href], [tabindex]:not([tabindex="-1"])';
+
 export const NewWorkflowModal = ({ onClose, onSuccess }: { onClose: () => void, onSuccess: () => void }) => {
-  const [query, setQuery] = useState('');
   const [sources, setSources] = useState({
     twitter: true,
     youtube: true,
@@ -34,90 +44,165 @@ export const NewWorkflowModal = ({ onClose, onSuccess }: { onClose: () => void, 
     guardian: true,
   });
   const [submitting, setSubmitting] = useState(false);
+  const [submitAttempted, setSubmitAttempted] = useState(false);
+  const [formError, setFormError] = useState<{ text: string; key: number } | null>(null);
+  const [closing, setClosing] = useState(false);
+  const submittingRef = useRef(false);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const toast = useToast();
+  const form = useFormFields({ query: '' }, { query: validateQuery });
+
+  const activeSources = Object.entries(sources)
+    .filter(([, isActive]) => isActive)
+    .map(([key]) => key);
+  const sourcesError = submitAttempted && activeSources.length === 0 ? 'Select at least one data source.' : undefined;
+
+  // Whatever opened the dialog gets focus back on close. Captured during the
+  // first render, because autoFocus moves focus into the dialog before effects run.
+  const [opener] = useState(() => document.activeElement as HTMLElement | null);
+
+  // Play the exit animation, then let the parent unmount the dialog.
+  const closeThen = (after: () => void) => {
+    setClosing(true);
+    window.setTimeout(() => {
+      after();
+      opener?.focus();
+    }, EXIT_MS);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Escape' && !submitting && !closing) {
+      e.stopPropagation();
+      closeThen(onClose);
+      return;
+    }
+    // Keep Tab cycling inside the dialog.
+    if (e.key === 'Tab' && dialogRef.current) {
+      const focusable = dialogRef.current.querySelectorAll<HTMLElement>(FOCUSABLE);
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (submittingRef.current) return;
+    setSubmitAttempted(true);
+    setFormError(null);
+
+    if (form.validateAll()) {
+      document.getElementById('workflow-query')?.focus();
+      return;
+    }
+    if (activeSources.length === 0) {
+      dialogRef.current?.querySelector<HTMLInputElement>('input[type="checkbox"]')?.focus();
+      return;
+    }
+
+    submittingRef.current = true;
     setSubmitting(true);
-    
-    const activeSources = Object.entries(sources)
-      .filter(([, isActive]) => isActive)
-      .map(([key]) => key);
 
     try {
-      await createWorkflow({ query, sources: activeSources });
-      onSuccess();
+      await createWorkflow({ query: form.values.query, sources: activeSources });
+      toast('Workflow started');
+      closeThen(onSuccess);
     } catch (error) {
-      console.error("Failed to create workflow", error);
-      alert("Failed to create workflow. Check console.");
+      const { message, fieldErrors } = describeApiError(error, 'workflow');
+      form.setServerErrors({ query: fieldErrors.query });
+      setFormError({ text: message, key: Date.now() });
     } finally {
+      submittingRef.current = false;
       setSubmitting(false);
     }
   };
 
-  return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 animate-fade-in">
-      <div className="glass-card w-full max-w-lg rounded-2xl p-6 animate-slide-up relative">
-        <button onClick={onClose} className="absolute top-4 right-4 text-gray-400 hover:text-white">
-          <X className="w-6 h-6" />
+  // Portalled to <body> so no transformed ancestor can trap the fixed overlay.
+  return createPortal(
+    <div className={`fixed inset-0 bg-scrim flex items-center justify-center p-4 z-[70] ${closing ? 'animate-fade-out' : 'animate-fade-in'}`}>
+      <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="new-workflow-title"
+        onKeyDown={handleKeyDown}
+        className={`card w-full max-w-lg max-h-[calc(100vh-2rem)] overflow-y-auto p-6 relative shadow-[0_24px_48px_-24px_rgb(0_0_0/0.4)] ${closing ? 'animate-sheet-out' : 'animate-sheet-in'}`}
+      >
+        <button onClick={() => closeThen(onClose)} disabled={submitting} className="icon-btn absolute top-3 right-3" aria-label="Close">
+          <X className="w-5 h-5" />
         </button>
-        
-        <h2 className="text-2xl font-bold mb-6">New Research Workflow</h2>
-        
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">
-              Research Query
-            </label>
-            <input 
-              type="text" 
-              required
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="e.g., iPhone 17 battery life user sentiment"
-              className="w-full bg-[#0f0f0f] border border-white/10 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-accent transition-all"
-            />
-          </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">
-              Data Sources
-            </label>
-            <div className="grid grid-cols-2 gap-3">
+        <h2 id="new-workflow-title" className="page-title mb-6 pr-10">New research workflow</h2>
+
+        {formError && (
+          <FormMessage key={formError.key} tone="error" className="mb-5">{formError.text}</FormMessage>
+        )}
+
+        <form onSubmit={handleSubmit} noValidate className="space-y-6">
+          <Field id="workflow-query" label="Research query" error={form.errorFor('query')}>
+            {(control) => (
+              <input
+                {...control}
+                {...form.bind('query')}
+                type="text"
+                autoFocus
+                autoComplete="off"
+                placeholder="e.g., iPhone 17 battery life user sentiment"
+                className="input"
+              />
+            )}
+          </Field>
+
+          <fieldset aria-describedby={sourcesError ? 'workflow-sources-error' : undefined}>
+            <legend className="block text-sm font-medium text-fg mb-2">
+              Data sources
+            </legend>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2.5">
               {Object.keys(sources).map((source) => (
-                <label key={source} className="flex items-center gap-2 cursor-pointer group">
+                <label key={source} className="flex items-center gap-2.5">
                   <input
                     type="checkbox"
                     checked={sources[source as keyof typeof sources]}
                     onChange={(e) => setSources({ ...sources, [source]: e.target.checked })}
-                    className="rounded border-gray-600 bg-black/20 text-accent focus:ring-accent w-4 h-4 accent-accent"
+                    className="w-4 h-4 accent-accent"
                   />
-                  <div>
-                    <span className="text-sm font-medium">{SOURCE_LABELS[source]}</span>
-                    <span className="text-xs text-gray-500 ml-1">({SOURCE_DESCRIPTIONS[source]})</span>
-                  </div>
+                  <span className="text-sm">
+                    <span className="font-medium text-fg">{SOURCE_LABELS[source]}</span>
+                    <span className="text-xs text-subtle ml-1.5">{SOURCE_DESCRIPTIONS[source]}</span>
+                  </span>
                 </label>
               ))}
             </div>
-          </div>
+            {sourcesError && (
+              <p id="workflow-sources-error" className="mt-2 flex items-start gap-1.5 text-xs text-danger">
+                <CircleAlert className="w-3.5 h-3.5 mt-px shrink-0" aria-hidden="true" />
+                {sourcesError}
+              </p>
+            )}
+          </fieldset>
 
-          <div className="pt-4 flex justify-end gap-3">
-            <button 
-              type="button" 
-              onClick={onClose}
-              className="px-6 py-2 rounded-xl text-gray-300 hover:text-white hover:bg-white/5 transition-colors"
+          <div className="pt-2 flex justify-end gap-2">
+            <button
+              type="button"
+              onClick={() => closeThen(onClose)}
+              disabled={submitting}
+              className="btn btn-ghost"
             >
               Cancel
             </button>
-            <button 
-              type="submit" 
-              disabled={submitting || !query}
-              className="glass-button px-6 py-2 rounded-xl font-medium text-white shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {submitting ? 'Starting Agents...' : 'Launch Agents'}
-            </button>
+            <SubmitButton loading={submitting}>
+              Launch Agents
+            </SubmitButton>
           </div>
         </form>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 };

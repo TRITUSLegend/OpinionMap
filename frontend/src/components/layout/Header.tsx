@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { Bell, Search, Menu, X, CheckCircle, AlertCircle, Clock, FileText, Zap } from 'lucide-react';
 import { fetchRecentActivity } from '../../api/client';
+import { ThemeToggle } from '../ui/ThemeToggle';
+import { useScrollSelector } from '../../hooks/useWindowScroll';
 
 interface HeaderProps {
   toggleSidebar: () => void;
@@ -35,6 +37,8 @@ export const Header = ({ toggleSidebar }: HeaderProps) => {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
+  // The header is sticky against the window; its edge only appears once content scrolls under it.
+  const scrolled = useScrollSelector((s) => s.y > 0);
 
   // Close panel when clicking outside
   useEffect(() => {
@@ -96,37 +100,45 @@ export const Header = ({ toggleSidebar }: HeaderProps) => {
 
   const getIcon = (type: string) => {
     switch (type) {
-      case 'success': return <CheckCircle className="w-4 h-4 text-emerald-400" />;
-      case 'warning': return <AlertCircle className="w-4 h-4 text-amber-400" />;
-      case 'workflow': return <Zap className="w-4 h-4 text-indigo-400" />;
-      case 'report': return <FileText className="w-4 h-4 text-sky-400" />;
-      default: return <Clock className="w-4 h-4 text-gray-400" />;
+      case 'success': return <CheckCircle className="w-4 h-4 text-success" />;
+      case 'warning': return <AlertCircle className="w-4 h-4 text-warning" />;
+      case 'workflow': return <Zap className="w-4 h-4 text-fg" />;
+      case 'report': return <FileText className="w-4 h-4 text-fg" />;
+      default: return <Clock className="w-4 h-4 text-subtle" />;
     }
   };
 
   return (
-    <header className="h-20 bg-black/80 border-b border-white/5 flex items-center justify-between px-4 md:px-8 sticky top-0 z-10 backdrop-blur-md">
-      <div className="flex items-center gap-4">
-        <button 
+    <header
+      className={`h-16 bg-canvas border-b flex items-center justify-between gap-3 px-4 md:px-8 sticky top-0 z-30 transition-[border-color,box-shadow] duration-[180ms] ${
+        scrolled ? 'border-border shadow-[0_6px_16px_-12px_rgb(0_0_0/0.25)]' : 'border-transparent'
+      }`}
+    >
+      <div className="flex items-center gap-2 min-w-0">
+        <button
           onClick={toggleSidebar}
-          className="md:hidden text-gray-400 hover:text-white p-2 transition-colors"
+          className="icon-btn md:hidden"
+          aria-label="Open navigation"
         >
-          <Menu className="w-6 h-6" />
+          <Menu className="w-5 h-5" />
         </button>
-        <div className="hidden md:flex items-center gap-4 bg-white/5 hover:bg-white/10 transition-colors px-4 py-2 rounded-xl border border-white/5 w-96">
-          <Search className="w-5 h-5 text-gray-400" />
-          <input 
-            type="text" 
-            placeholder="Search workflows, reports..." 
-            className="bg-transparent border-none outline-none text-sm w-full text-white placeholder-gray-500"
+        <label className="hidden md:flex items-center gap-2.5 bg-surface border border-border hover:border-border-strong focus-within:border-border-strong transition-colors duration-[120ms] px-3 h-9 rounded-md w-80 lg:w-96">
+          <Search className="w-4 h-4 text-subtle shrink-0" aria-hidden="true" />
+          <span className="sr-only">Search</span>
+          <input
+            type="search"
+            placeholder="Search workflows, reports..."
+            className="bg-transparent border-none text-sm w-full text-fg focus-visible:outline-none"
           />
-        </div>
+        </label>
       </div>
 
-      <div className="flex items-center gap-4 md:gap-6">
-        <button className="md:hidden text-gray-400 hover:text-white transition-colors">
-          <Search className="w-6 h-6" />
+      <div className="flex items-center gap-1">
+        <button className="icon-btn md:hidden" aria-label="Search">
+          <Search className="w-5 h-5" />
         </button>
+
+        <ThemeToggle />
 
         {/* Notification Bell */}
         <div className="relative" ref={panelRef}>
@@ -134,43 +146,45 @@ export const Header = ({ toggleSidebar }: HeaderProps) => {
             onClick={() => {
               const next = !showNotifications;
               setShowNotifications(next);
-              // Show the spinner immediately on open; the fetch effect clears it.
+              // Show the loading state immediately on open; the fetch effect clears it.
               if (next) setLoading(true);
             }}
-            className="relative text-gray-400 hover:text-white transition-colors"
+            className="icon-btn relative"
             id="notification-bell"
+            aria-label={unreadCount > 0 ? `Notifications, ${unreadCount} unread` : 'Notifications'}
+            aria-expanded={showNotifications}
           >
-            <Bell className="w-6 h-6" />
+            <Bell className="w-5 h-5" />
             {unreadCount > 0 && (
-              <span className="absolute -top-1 -right-1 w-5 h-5 bg-accent rounded-full border-2 border-black text-[10px] text-black font-bold flex items-center justify-center">
+              <span className="absolute top-0.5 right-0.5 min-w-4 h-4 px-1 bg-accent rounded-full ring-2 ring-canvas text-[10px] leading-4 text-accent-fg font-semibold tabular-nums text-center" aria-hidden="true">
                 {unreadCount > 9 ? '9+' : unreadCount}
               </span>
-            )}
-            {unreadCount === 0 && (
-              <span className="absolute top-0 right-0 w-2.5 h-2.5 bg-accent rounded-full border-2 border-black"></span>
             )}
           </button>
 
           {/* Notification Dropdown Panel */}
           {showNotifications && (
             <div
-              className="absolute right-0 top-12 w-[380px] max-h-[480px] rounded-2xl border border-white/10 shadow-2xl overflow-hidden z-50 bg-[#0a0a0a]"
+              className="absolute right-0 top-11 w-[min(380px,calc(100vw-2rem))] max-h-[480px] rounded-lg border border-border shadow-[0_12px_32px_-16px_rgb(0_0_0/0.3)] overflow-hidden z-50 bg-surface animate-pop-in origin-top-right"
+              role="region"
+              aria-label="Notifications"
             >
               {/* Panel Header */}
-              <div className="flex items-center justify-between px-5 py-4 border-b border-white/10 bg-[#0f0f0f]">
-                <h3 className="text-white font-semibold text-sm tracking-wide">Notifications</h3>
-                <div className="flex items-center gap-3">
+              <div className="flex items-center justify-between pl-4 pr-2 py-2 border-b border-border">
+                <h3 className="caption">Notifications</h3>
+                <div className="flex items-center gap-1">
                   {notifications.length > 0 && (
                     <button
                       onClick={markAllRead}
-                      className="text-xs text-accent hover:text-white transition-colors"
+                      className="btn btn-ghost min-h-8 px-2 text-xs"
                     >
                       Mark all read
                     </button>
                   )}
                   <button
                     onClick={() => setShowNotifications(false)}
-                    className="text-gray-500 hover:text-white transition-colors"
+                    className="icon-btn w-8 h-8"
+                    aria-label="Close notifications"
                   >
                     <X className="w-4 h-4" />
                   </button>
@@ -178,23 +192,32 @@ export const Header = ({ toggleSidebar }: HeaderProps) => {
               </div>
 
               {/* Panel Body */}
-              <div className="overflow-y-auto max-h-[360px] custom-scrollbar bg-[#0a0a0a]">
+              <div className="overflow-y-auto max-h-[360px]">
                 {loading ? (
-                  <div className="flex items-center justify-center py-12">
-                    <div className="w-6 h-6 border-2 border-accent/30 border-t-accent rounded-full animate-spin" />
+                  <div className="p-4 space-y-4" role="status" aria-label="Loading notifications">
+                    {[0, 1, 2].map((i) => (
+                      <div key={i} className="flex gap-3">
+                        <div className="skeleton w-4 h-4 rounded-full shrink-0" />
+                        <div className="flex-1 space-y-2">
+                          <div className="skeleton h-3 w-2/3" />
+                          <div className="skeleton h-3 w-full" />
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 ) : notifications.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center py-12 text-gray-500">
-                    <Bell className="w-10 h-10 mb-3 opacity-30" />
+                  <div className="flex flex-col items-center justify-center py-12 text-muted">
+                    <Bell className="w-8 h-8 mb-3 text-subtle" aria-hidden="true" />
                     <p className="text-sm">No notifications yet</p>
-                    <p className="text-xs mt-1 text-gray-600">Run a workflow to get started</p>
+                    <p className="text-xs mt-1 text-subtle">Run a workflow to get started</p>
                   </div>
                 ) : (
                   notifications.map((n) => (
-                    <div
+                    <button
+                      type="button"
                       key={n.id}
-                      className={`flex items-start gap-3 px-5 py-3.5 border-b border-white/5 transition-colors cursor-pointer hover:bg-white/5 ${
-                        !n.read ? 'bg-accent/5' : ''
+                      className={`w-full text-left flex items-start gap-3 px-4 py-3 border-b border-border last:border-b-0 transition-colors duration-[120ms] hover:bg-surface-2 focus-visible:-outline-offset-2 ${
+                        !n.read ? 'bg-surface-2/60' : ''
                       }`}
                       onClick={() =>
                         setNotifications((prev) =>
@@ -202,28 +225,29 @@ export const Header = ({ toggleSidebar }: HeaderProps) => {
                         )
                       }
                     >
-                      <div className="mt-0.5 flex-shrink-0">{getIcon(n.type)}</div>
+                      <div className="mt-0.5 flex-shrink-0" aria-hidden="true">{getIcon(n.type)}</div>
                       <div className="flex-1 min-w-0">
-                        <p className={`text-sm leading-tight ${!n.read ? 'text-white font-medium' : 'text-gray-300'}`}>
+                        <p className={`text-sm leading-tight ${!n.read ? 'text-fg font-medium' : 'text-muted'}`}>
                           {n.title}
                         </p>
-                        <p className="text-xs text-gray-500 mt-1 line-clamp-2">{n.message}</p>
-                        <p className="text-[10px] text-gray-600 mt-1.5">{n.time}</p>
+                        <p className="text-xs text-muted mt-1 line-clamp-2">{n.message}</p>
+                        <p className="text-[11px] text-subtle mt-1.5">{n.time}</p>
                       </div>
                       {!n.read && (
-                        <span className="w-2 h-2 rounded-full bg-accent mt-2 flex-shrink-0" />
+                        <span className="w-1.5 h-1.5 rounded-full bg-accent mt-2 flex-shrink-0" aria-hidden="true" />
                       )}
-                    </div>
+                      {!n.read && <span className="sr-only">(unread)</span>}
+                    </button>
                   ))
                 )}
               </div>
 
               {/* Panel Footer */}
               {notifications.length > 0 && (
-                <div className="px-5 py-3 border-t border-white/10 flex justify-center bg-[#0f0f0f]">
+                <div className="px-2 py-1.5 border-t border-border flex justify-center">
                   <button
                     onClick={clearAll}
-                    className="text-xs text-gray-500 hover:text-red-400 transition-colors"
+                    className="btn btn-ghost min-h-8 text-xs"
                   >
                     Clear all notifications
                   </button>

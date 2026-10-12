@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { FileText, Download, Trash2 } from 'lucide-react';
 import { fetchReports, deleteReport } from '../api/client';
+import { useToast } from '../components/ui/toast-context';
 
 interface ReportItem {
   id: string;
@@ -14,6 +15,7 @@ interface ReportItem {
 export const Reports = () => {
   const [reports, setReports] = useState<ReportItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const toast = useToast();
 
   useEffect(() => {
     let cancelled = false;
@@ -31,34 +33,36 @@ export const Reports = () => {
   }, []);
 
   return (
-    <div className="space-y-6 animate-fade-in">
+    <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight text-white">Executive Reports</h1>
-        <p className="text-gray-400 mt-1">AI-generated summaries and insights</p>
+        <h1 className="page-title">Executive Reports</h1>
+        <p className="text-muted text-sm mt-1">AI-generated summaries and insights</p>
       </div>
 
       {loading ? (
-        <div className="text-center p-12 text-gray-400">Loading reports...</div>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6" role="status" aria-label="Loading reports">
+          {[0, 1].map((i) => <div key={i} className="skeleton h-60 rounded-lg" />)}
+        </div>
       ) : reports.length === 0 ? (
-        <div className="text-center p-12 glass-card rounded-2xl text-gray-400">
+        <div className="card text-center p-12 text-muted">
           No reports generated yet. Complete a workflow to see results here.
         </div>
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
           {reports.map((report) => (
-            <div key={report.id} className="glass-card rounded-2xl p-6 hover:shadow-2xl transition-all duration-300">
-              <div className="flex justify-between items-start mb-4">
-                <div className="flex items-center gap-3">
-                  <div className="p-3 rounded-xl bg-accent/10 text-accent">
-                    <FileText className="w-6 h-6" />
+            <article key={report.id} className="card p-5 md:p-6 min-w-0">
+              <div className="flex justify-between items-start gap-4 mb-5">
+                <div className="flex items-start gap-3 min-w-0">
+                  <div className="p-2 rounded-md bg-surface-2 border border-border text-muted shrink-0" aria-hidden="true">
+                    <FileText className="w-5 h-5" />
                   </div>
-                  <div>
-                    <h3 className="text-xl font-bold">{report.title || "Market Research Report"}</h3>
-                    <p className="text-sm text-gray-400">{new Date(report.created_at).toLocaleDateString()}</p>
+                  <div className="min-w-0">
+                    <h2 className="text-base font-semibold text-fg leading-snug">{report.title || "Market Research Report"}</h2>
+                    <p className="text-xs text-subtle mt-0.5 tabular-nums">{new Date(report.created_at).toLocaleDateString()}</p>
                   </div>
                 </div>
-                <div className="flex gap-2">
-                  <button 
+                <div className="flex gap-1 shrink-0">
+                  <button
                     onClick={async () => {
                       try {
                         const { downloadPdf } = await import('../api/client');
@@ -73,10 +77,10 @@ export const Reports = () => {
                         window.URL.revokeObjectURL(url);
                       } catch (error) {
                         console.error('Download failed', error);
-                        alert('Failed to download PDF. Please try again.');
+                        toast('Failed to download the PDF. Please try again.', 'error');
                       }
                     }}
-                    className="p-2 rounded-lg bg-white/5 hover:bg-white/10 text-gray-300 transition-colors" title="Download PDF">
+                    className="icon-btn" title="Download PDF" aria-label="Download PDF">
                     <Download className="w-4 h-4" />
                   </button>
                   <button
@@ -91,30 +95,31 @@ export const Reports = () => {
                         }
                       }
                     }}
-                    className="p-2 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 transition-colors"
+                    className="icon-btn icon-btn-danger"
                     title="Delete Report"
+                    aria-label="Delete report"
                   >
                     <Trash2 className="w-4 h-4" />
                   </button>
                 </div>
               </div>
-              
-              <div className="mb-4">
-                <h4 className="text-sm font-semibold text-gray-300 mb-2 uppercase tracking-wider">Executive Summary</h4>
-                <p className="text-gray-400 text-sm line-clamp-3">
+
+              <div className="mb-5">
+                <h3 className="caption mb-1.5">Executive Summary</h3>
+                <p className="text-muted text-sm leading-relaxed line-clamp-3">
                   {report.executive_summary}
                 </p>
               </div>
 
               <div>
-                <h4 className="text-sm font-semibold text-gray-300 mb-2 uppercase tracking-wider">Recommendations</h4>
-                <ul className="text-sm text-gray-400 list-disc list-inside space-y-1">
+                <h3 className="caption mb-1.5">Recommendations</h3>
+                <ul className="text-sm text-muted list-disc list-inside space-y-1 marker:text-subtle">
                   {(report.recommendations || []).slice(0, 3).map((rec: string, i: number) => (
                     <li key={i} className="truncate">{rec}</li>
                   ))}
                 </ul>
               </div>
-            </div>
+            </article>
           ))}
         </div>
       )}

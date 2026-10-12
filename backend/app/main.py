@@ -21,7 +21,7 @@ from prometheus_client import make_asgi_app
 from app.database import init_db
 from app.core.exceptions import AppError, app_error_handler
 from app.core.middleware import RequestLoggingMiddleware, PrometheusMiddleware
-from app.config import settings
+from app.config import Settings, settings
 from app.core.logging import get_logger
 
 from app.api.auth import router as auth_router
@@ -39,6 +39,12 @@ logger = get_logger(__name__)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info("Starting up application...")
+
+    if settings.JWT_SECRET_KEY == Settings.model_fields["JWT_SECRET_KEY"].default:
+        logger.warning(
+            "JWT_SECRET_KEY is the built-in default; anyone can forge login tokens. "
+            "Set a random secret in the environment."
+        )
 
     # Configure Gemini SDK once at startup -- agents reuse this global config
     if settings.GEMINI_API_KEY:
@@ -84,3 +90,11 @@ app.include_router(admin_router, prefix="/api/admin", tags=["admin"])
 @app.get("/")
 async def root():
     return {"name": settings.APP_NAME, "version": "1.0.0", "status": "ok"}
+
+
+# Cheap liveness check for uptime monitors, which often send HEAD (no DB or
+# auth). Pinging / every 10-14 minutes keeps a free-tier instance from spinning
+# down, which is what makes first logins time out. Kept out of the API docs.
+@app.head("/", include_in_schema=False)
+async def root_head():
+    return await root()
