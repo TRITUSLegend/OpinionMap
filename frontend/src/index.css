@@ -34,6 +34,7 @@
   --color-success: var(--success);
   --color-warning: var(--warning);
   --color-danger: var(--danger);
+  --color-ember: var(--ember);
 }
 
 @theme static {
@@ -70,11 +71,30 @@
   --chart-grid: #e1e0d9;
   --chart-axis: #c3c2b7;
 
+  /* Login / signup. Ember is the auth screens' only accent: focus rings,
+     the active segment marker, links and small highlights in the scene. */
+  --ember: #ad4a17;
+  --auth-page: #eadfcd;
+  --auth-glow: rgb(246 196 140 / 0.7);
+  --auth-panel: #fbf8f3;
+  --auth-field: #f1ebe1;
+  --auth-field-border: #968b7d; /* 3.1:1 on the panel */
+  --auth-field-border-hover: #6f655a;
+  --auth-raised: #fdfbf8;
+  --auth-label: #5a5249;
+  --auth-muted: #6a6157;
+  --auth-placeholder: #6f665c;
+  --auth-frame: rgb(26 26 25 / 0.1);
+  --auth-contour: #4a3828;
+  --auth-button-hover: #2e2d2b;
+
   /* Motion: one easing curve, three durations. */
   --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
   --dur-fast: 120ms;
   --dur: 180ms;
   --dur-slow: 240ms;
+  /* Gentler ease-out for the auth screens' entrance and ambient motion. */
+  --ease-soft: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 :root.dark {
@@ -103,6 +123,21 @@
 
   --chart-grid: #2c2c2a;
   --chart-axis: #383835;
+
+  --ember: #f08c55;
+  --auth-page: #1d1714;
+  --auth-glow: rgb(240 140 85 / 0.3);
+  --auth-panel: #141110;
+  --auth-field: #1e1a17;
+  --auth-field-border: #6a6157; /* 3.1:1 on the panel */
+  --auth-field-border-hover: #8f8478;
+  --auth-raised: #2c2621;
+  --auth-label: #bcb3a8;
+  --auth-muted: #a9a093;
+  --auth-placeholder: #958c80;
+  --auth-frame: rgb(255 255 255 / 0.1);
+  --auth-contour: #f3c9a6;
+  --auth-button-hover: #ffffff;
 }
 
 @layer base {

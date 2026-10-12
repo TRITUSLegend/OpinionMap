@@ -20,7 +20,11 @@ export const PasswordInput = ({ className = '', ...props }: PasswordInputProps) 
         aria-controls={props.id}
         className="icon-btn absolute inset-y-1 right-1 w-9 h-auto"
       >
-        {visible ? <EyeOff className="w-4 h-4" aria-hidden="true" /> : <Eye className="w-4 h-4" aria-hidden="true" />}
+        {/* Both icons stay mounted and crossfade. */}
+        <span className="relative w-4 h-4" aria-hidden="true">
+          <Eye className={`absolute inset-0 w-4 h-4 transition-[opacity,scale] duration-[160ms] ${visible ? 'opacity-0 scale-75' : 'opacity-100'}`} />
+          <EyeOff className={`absolute inset-0 w-4 h-4 transition-[opacity,scale] duration-[160ms] ${visible ? 'opacity-100' : 'opacity-0 scale-75'}`} />
+        </span>
       </button>
     </div>
   );

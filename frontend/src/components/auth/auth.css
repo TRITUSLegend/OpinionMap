@@ -1,0 +1,650 @@
+/*
+ * Login / signup shell. Colours come from the --auth-* and --ember tokens in
+ * index.css, so both themes are just the two token sets.
+ *
+ * Phones: the form panel is the whole page.
+ * 640-1023px: a single framed column over the contour backdrop.
+ * 1024px+: a framed split card, form 40% / scene 60%.
+ */
+
+.auth-shell {
+  --ring: var(--ember);
+  position: relative;
+  isolation: isolate;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  min-height: 100dvh;
+  background-color: var(--auth-panel);
+  color: var(--fg);
+}
+
+/* Faint film grain over everything, at 2% opacity. */
+.auth-shell::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  pointer-events: none;
+  opacity: 0.02;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* Full-bleed atmosphere behind the card: one warm light low on the horizon. */
+.auth-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  display: none;
+  overflow: hidden;
+  background:
+    radial-gradient(70% 55% at 72% 64%, var(--auth-glow), transparent 70%),
+    var(--auth-page);
+}
+
+/* Slim contour art, used as the background only when the scene panel is hidden. */
+.auth-backdrop-art {
+  position: absolute;
+  inset: auto 0 0;
+  height: 58%;
+  display: none;
+  opacity: 0.55;
+}
+
+.auth-backdrop-art svg {
+  width: 100%;
+  height: 100%;
+}
+
+.auth-topbar {
+  position: fixed;
+  top: 12px;
+  right: 12px;
+  z-index: 20;
+}
+
+.auth-stage {
+  flex: 1;
+  display: flex;
+}
+
+.auth-card {
+  position: relative;
+  display: flex;
+  width: 100%;
+}
+
+.auth-panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  /* Bottom room so the storage notice never covers the footer link. */
+  padding: 20px 16px 112px;
+  background-color: var(--auth-panel);
+}
+
+.auth-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  width: 100%;
+  padding-block: 48px 24px;
+}
+
+.auth-title {
+  font-family: var(--font-serif);
+  font-weight: 400;
+  font-size: 2rem;
+  line-height: 1.1;
+  letter-spacing: -0.015em;
+  color: var(--fg);
+}
+
+.auth-subtitle {
+  margin-top: 8px;
+  font-size: 0.875rem;
+  color: var(--auth-muted);
+}
+
+.auth-children {
+  margin-top: 28px;
+}
+
+.auth-footer {
+  padding-top: 24px;
+  text-align: center;
+  font-size: 0.8125rem;
+  color: var(--auth-muted);
+}
+
+/* ── Controls inside the shell ─────────────────────────────── */
+
+.auth-shell label[for] {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--auth-label);
+}
+
+.auth-shell .input {
+  min-height: 48px;
+  padding-inline: 14px;
+  border-radius: 10px;
+  background-color: var(--auth-field);
+  border-color: var(--auth-field-border);
+  outline: 2px solid transparent;
+  outline-offset: 2px;
+}
+
+.auth-shell .input::placeholder {
+  color: var(--auth-placeholder);
+}
+
+.auth-shell .input:hover:not(:disabled) {
+  border-color: var(--auth-field-border-hover);
+}
+
+.auth-shell .input:focus-visible {
+  border-color: var(--auth-field-border-hover);
+  outline-color: var(--ember);
+}
+
+/* Browser autofill would otherwise paint its own (blue) background. */
+.auth-shell .input:-webkit-autofill,
+.auth-shell .input:-webkit-autofill:hover,
+.auth-shell .input:-webkit-autofill:focus {
+  -webkit-box-shadow: 0 0 0 1000px var(--auth-field) inset;
+  -webkit-text-fill-color: var(--fg);
+  caret-color: var(--fg);
+}
+
+.auth-shell .btn-primary {
+  min-height: 48px;
+  border-radius: 10px;
+}
+
+.auth-shell .btn-primary:hover:not(:disabled) {
+  background-color: var(--auth-button-hover);
+}
+
+.auth-shell .link {
+  color: var(--ember);
+  text-decoration-color: color-mix(in oklab, var(--ember) 45%, transparent);
+}
+
+.auth-shell .link:hover {
+  text-decoration-color: currentColor;
+}
+
+/* User / Admin: one indicator slides between the two options. */
+.auth-segment {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  padding: 4px;
+  margin-bottom: 24px;
+  border-radius: 12px;
+  background-color: var(--auth-field);
+  border: 1px solid var(--auth-frame);
+}
+
+.auth-segment-indicator {
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  left: 4px;
+  width: calc(50% - 4px);
+  border-radius: 8px;
+  background-color: var(--auth-raised);
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.12);
+}
+
+/* The accent marks the active option. */
+.auth-segment-indicator::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: 5px;
+  width: 16px;
+  height: 2px;
+  margin-left: -8px;
+  border-radius: 1px;
+  background-color: var(--ember);
+}
+
+.auth-segment[data-active='admin'] .auth-segment-indicator {
+  transform: translateX(100%);
+}
+
+.auth-segment-option {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 40px;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--auth-muted);
+}
+
+.auth-segment-option[aria-pressed='true'] {
+  color: var(--fg);
+}
+
+.auth-segment-option:not([aria-pressed='true']):hover {
+  color: var(--fg);
+}
+
+/* ── The scene: decorative, theme-aware ────────────────────── */
+
+.auth-scene {
+  position: relative;
+  display: none;
+  overflow: hidden;
+  container-type: size;
+  border-left: 1px solid var(--auth-frame);
+  /* Transparent base: the page atmosphere shows through, so the scene bleeds
+     into the background around the card. */
+  background: radial-gradient(55% 42% at 66% 47%, var(--auth-glow), transparent 72%);
+}
+
+.auth-scene-layer {
+  position: absolute;
+  inset: 0;
+}
+
+.auth-scene-layer svg {
+  width: 100%;
+  height: 100%;
+}
+
+/* Fade the far contours into the horizon glow, and the near ones out at the
+   bottom where the tagline sits. */
+.auth-scene-far {
+  mask-image: linear-gradient(to bottom, transparent 47%, #000 58%);
+}
+
+.auth-scene-near {
+  mask-image: linear-gradient(to bottom, #000 78%, transparent 98%);
+}
+
+.auth-contours path {
+  fill: none;
+  stroke: var(--auth-contour);
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+
+/* Pins sit at viewBox coordinates (--x, --y) mapped through the same fit as
+   the SVG layers (xMidYMax slice): scaled to cover, centred, bottom-aligned. */
+.auth-scene-pins {
+  --fit: max(100cqw / 640, 100cqh / 680);
+}
+
+.auth-pin {
+  position: absolute;
+  left: calc((100cqw - 640 * var(--fit)) / 2 + var(--x) * var(--fit));
+  top: calc(100cqh - 680 * var(--fit) + var(--y) * var(--fit));
+  width: 6px;
+  height: 6px;
+  margin: -3px 0 0 -3px;
+  border-radius: 50%;
+  background-color: currentColor;
+}
+
+.auth-pin::after {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  border-radius: 50%;
+  border: 1px solid currentColor;
+  opacity: 0.6;
+}
+
+.auth-pin-positive { color: var(--positive); }
+.auth-pin-neutral { color: var(--neutral); }
+.auth-pin-negative { color: var(--negative); }
+
+/* A clearly labelled sample, never presented as real data. */
+.auth-sample {
+  position: absolute;
+  top: 15%;
+  left: 46%;
+  width: 15rem;
+  padding: 14px 16px;
+  border-radius: 14px;
+  background-color: color-mix(in oklab, var(--auth-panel) 86%, transparent);
+  border: 1px solid var(--auth-frame);
+}
+
+.auth-sample-caption {
+  font-size: 0.6875rem;
+  color: var(--auth-muted);
+}
+
+.auth-sample-topic {
+  margin-top: 4px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--fg);
+}
+
+.auth-sample-bar {
+  display: flex;
+  gap: 2px;
+  height: 6px;
+  margin-top: 12px;
+}
+
+.auth-sample-bar span {
+  border-radius: 3px;
+}
+
+.auth-sample-legend {
+  display: flex;
+  gap: 12px;
+  margin-top: 10px;
+  font-size: 0.6875rem;
+  color: var(--auth-muted);
+}
+
+.auth-sample-legend i {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin-right: 5px;
+  border-radius: 50%;
+  vertical-align: 1px;
+}
+
+.auth-tagline {
+  position: absolute;
+  left: 40px;
+  right: 40px;
+  bottom: 30px;
+  font-family: var(--font-serif);
+  font-size: 1.25rem;
+  color: var(--auth-muted);
+}
+
+/* ── Responsive tiers ──────────────────────────────────────── */
+
+@media (min-width: 640px) {
+  .auth-shell {
+    background-color: var(--auth-page);
+  }
+
+  .auth-backdrop,
+  .auth-backdrop-art {
+    display: block;
+  }
+
+  .auth-stage {
+    align-items: center;
+    justify-content: center;
+    padding: 72px 24px 48px;
+  }
+
+  .auth-card {
+    max-width: 460px;
+    overflow: hidden;
+    border-radius: 24px;
+    border: 1px solid var(--auth-frame);
+    background-color: var(--auth-panel);
+  }
+
+  .auth-panel {
+    padding: 32px 40px 28px;
+  }
+
+  :root:not(.dark) .auth-card {
+    box-shadow: 0 40px 80px -48px rgb(60 40 20 / 0.45);
+  }
+}
+
+@media (min-width: 1024px) {
+  .auth-backdrop-art {
+    display: none;
+  }
+
+  .auth-stage {
+    padding: 32px;
+  }
+
+  .auth-card {
+    display: grid;
+    grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
+    grid-template-rows: minmax(0, 1fr);
+    max-width: 1080px;
+    /* Roughly 16:10. A taller form (signup with an error banner) grows the
+       card up to the viewport; beyond that the form scrolls inside it. */
+    min-height: clamp(560px, calc(100dvh - 64px), 675px);
+    max-height: calc(100dvh - 64px);
+    background-color: transparent;
+  }
+
+  .auth-panel {
+    /* Short laptop screens: the form scrolls inside the card. */
+    overflow-y: auto;
+    padding: 36px 48px 28px;
+  }
+
+  .auth-body {
+    max-width: 22rem;
+    padding-block: 48px 12px;
+  }
+
+  .auth-title {
+    font-size: 2.5rem;
+  }
+
+  .auth-scene {
+    display: block;
+  }
+}
+
+/* Short laptop screens (e.g. 1366x680): tighter heading and spacing. */
+@media (min-width: 1024px) and (max-height: 760px) {
+  .auth-body {
+    padding-block: 24px 8px;
+  }
+
+  .auth-title {
+    font-size: 2rem;
+  }
+
+  .auth-children {
+    margin-top: 20px;
+  }
+}
+
+/* ── Motion ────────────────────────────────────────────────────
+ * Transform and opacity only, one easing token (--ease-soft), 160-480ms for
+ * interface motion. The ambient scene loops are slow and composited, pause
+ * while the tab is hidden, and everything is off under reduced motion.
+ */
+
+@keyframes auth-rise {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 12px, 0);
+  }
+}
+
+@keyframes auth-rise-sm {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 8px, 0);
+  }
+}
+
+@keyframes auth-drop {
+  from {
+    opacity: 0;
+    transform: translate3d(0, -6px, 0);
+  }
+}
+
+@keyframes auth-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes auth-drift-a {
+  from { transform: translate3d(-6px, 0, 0); }
+  to { transform: translate3d(6px, 0, 0); }
+}
+
+@keyframes auth-drift-b {
+  from { transform: translate3d(6px, 0, 0); }
+  to { transform: translate3d(-6px, 0, 0); }
+}
+
+@keyframes auth-pulse {
+  0% {
+    opacity: 0.7;
+    transform: scale(1);
+  }
+  70%,
+  100% {
+    opacity: 0;
+    transform: scale(2.1);
+  }
+}
+
+@keyframes auth-float {
+  from { transform: translate3d(0, -4px, 0); }
+  to { transform: translate3d(0, 4px, 0); }
+}
+
+/* Entrance: the card rises once, then its contents follow ~50ms apart. */
+.auth-card {
+  animation: auth-rise 420ms var(--ease-soft) backwards;
+}
+
+.auth-title,
+.auth-subtitle,
+.auth-children > :not(form, [role='alert'], [role='status']),
+.auth-form > *,
+.auth-footer {
+  animation: auth-rise-sm 420ms var(--ease-soft) backwards;
+  animation-delay: calc(140ms + var(--i, 0) * 50ms);
+}
+
+.auth-subtitle { --i: 1; }
+.auth-children > :not(form, [role='alert'], [role='status']) { --i: 2; }
+.auth-form > :nth-child(1) { --i: 3; }
+.auth-form > :nth-child(2) { --i: 4; }
+.auth-form > :nth-child(3) { --i: 5; }
+.auth-form > :nth-child(4) { --i: 6; }
+.auth-form > :nth-child(5) { --i: 7; }
+.auth-footer { --i: 8; }
+
+/* Form-level messages slide down; field errors fade in under the field. */
+.auth-children > :is([role='alert'], [role='status']) {
+  animation: auth-drop 240ms var(--ease-soft) backwards;
+}
+
+.auth-shell p[id$='-error'] {
+  animation: auth-fade 200ms var(--ease-soft) backwards;
+}
+
+.auth-shell .input {
+  transition:
+    border-color 160ms var(--ease-soft),
+    outline-color 160ms var(--ease-soft),
+    background-color 200ms var(--ease-soft);
+}
+
+.auth-shell .btn-primary {
+  transition:
+    transform 160ms var(--ease-soft),
+    background-color 160ms var(--ease-soft);
+}
+
+.auth-shell .btn-primary:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+.auth-shell .btn-primary:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+.auth-segment-indicator {
+  transition: transform 280ms var(--ease-soft);
+}
+
+.auth-segment-option {
+  transition: color 200ms var(--ease-soft);
+}
+
+/* Scene life: opposite slow drifts, staggered pin pulses, a floating card. */
+.auth-scene-far,
+.auth-scene-near,
+.auth-sample {
+  will-change: transform;
+}
+
+.auth-scene-far {
+  animation: auth-drift-a 52s linear infinite alternate;
+}
+
+.auth-scene-near {
+  animation: auth-drift-b 38s linear infinite alternate;
+}
+
+.auth-pin::after {
+  animation: auth-pulse 4s var(--ease-soft) infinite;
+}
+
+.auth-pin:nth-child(2)::after { animation-delay: 1s; }
+.auth-pin:nth-child(3)::after { animation-delay: 2s; }
+.auth-pin:nth-child(4)::after { animation-delay: 3s; }
+
+.auth-sample {
+  animation: auth-float 6s ease-in-out infinite alternate;
+}
+
+/* Pointer parallax (--px / --py, -1..1): nearer layers move further. Uses
+   the individual translate property so it composes with the drift. */
+.auth-scene-far,
+.auth-scene-near,
+.auth-scene-pins,
+.auth-sample {
+  transition: translate 600ms var(--ease-soft);
+}
+
+.auth-scene-far { translate: calc(var(--px, 0) * -2px) calc(var(--py, 0) * -1px); }
+.auth-scene-near,
+.auth-scene-pins { translate: calc(var(--px, 0) * -4px) calc(var(--py, 0) * -2px); }
+.auth-sample { translate: calc(var(--px, 0) * -6px) calc(var(--py, 0) * -3px); }
+
+.auth-shell[data-paused] .auth-ambient,
+.auth-shell[data-paused] .auth-ambient::after {
+  animation-play-state: paused;
+}
+
+/* Theme switch: crossfade the shell's surfaces only. */
+html.theme-transition .auth-shell :is(.auth-backdrop, .auth-card, .auth-panel, .auth-segment, .auth-segment-indicator, .auth-sample, .input, .auth-title, .auth-subtitle, .auth-footer) {
+  transition:
+    background-color 200ms var(--ease-soft),
+    border-color 200ms var(--ease-soft),
+    color 200ms var(--ease-soft) !important;
+}
+
+html.theme-transition .auth-contours path {
+  transition: stroke 200ms var(--ease-soft);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .auth-shell *,
+  .auth-shell *::before,
+  .auth-shell *::after {
+    animation: none !important;
+  }
+}

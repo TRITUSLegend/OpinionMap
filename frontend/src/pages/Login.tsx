@@ -3,7 +3,7 @@ import { useNavigate, useLocation, useSearchParams, Link } from 'react-router-do
 import { LogIn, Shield } from 'lucide-react';
 import { useAuth } from '../context/auth-context';
 import { login as apiLogin, adminLogin, wakeServer } from '../api/client';
-import { AuthShell } from '../components/layout/AuthShell';
+import { AuthShell } from '../components/auth/AuthShell';
 import { Field } from '../components/ui/Field';
 import { FormMessage } from '../components/ui/FormMessage';
 import { PasswordInput } from '../components/ui/PasswordInput';
@@ -87,8 +87,9 @@ export const Login = () => {
 
   return (
     <AuthShell
+      errorKey={formError?.key}
       title="Welcome back"
-      subtitle="Log in to your OpinionMap workspace"
+      subtitle="Sign in to your OpinionMap workspace"
       footer={
         <>
           Don't have an account?{' '}
@@ -96,14 +97,13 @@ export const Login = () => {
         </>
       }
     >
-      <div className="grid grid-cols-2 gap-1 p-1 mb-6 rounded-md bg-surface-2 border border-border" role="group" aria-label="Account type">
+      <div className="auth-segment" role="group" aria-label="Account type" data-active={isAdminLogin ? 'admin' : 'user'}>
+        <span className="auth-segment-indicator" aria-hidden="true" />
         <button
           type="button"
           onClick={() => switchMode(false)}
           aria-pressed={!isAdminLogin}
-          className={`px-3 py-1.5 rounded-sm text-sm font-medium transition-colors duration-[120ms] ${
-            !isAdminLogin ? 'bg-surface text-fg shadow-[0_1px_2px_rgb(0_0_0/0.08)]' : 'text-muted hover:text-fg'
-          }`}
+          className="auth-segment-option"
         >
           User
         </button>
@@ -111,9 +111,7 @@ export const Login = () => {
           type="button"
           onClick={() => switchMode(true)}
           aria-pressed={isAdminLogin}
-          className={`px-3 py-1.5 rounded-sm text-sm font-medium transition-colors duration-[120ms] flex items-center justify-center gap-1.5 ${
-            isAdminLogin ? 'bg-surface text-fg shadow-[0_1px_2px_rgb(0_0_0/0.08)]' : 'text-muted hover:text-fg'
-          }`}
+          className="auth-segment-option"
         >
           <Shield className="w-3.5 h-3.5" aria-hidden="true" />
           Admin
@@ -126,7 +124,7 @@ export const Login = () => {
         <FormMessage tone="info" className="mb-5">{notice}</FormMessage>
       ) : null}
 
-      <form onSubmit={handleSubmit} noValidate className="space-y-4">
+      <form onSubmit={handleSubmit} noValidate className="auth-form space-y-5">
         <Field id={FIELD_IDS.email} label="Email address" error={form.errorFor('email')}>
           {(control) => (
             <input
@@ -149,7 +147,7 @@ export const Login = () => {
           )}
         </Field>
 
-        <SubmitButton loading={submitting} loadingLabel="Signing in…" className="w-full min-h-10 mt-2">
+        <SubmitButton loading={submitting} loadingLabel="Signing in…" className="w-full mt-2">
           <LogIn className="w-4 h-4" aria-hidden="true" />
           {isAdminLogin ? 'Sign in as admin' : 'Sign in'}
         </SubmitButton>
