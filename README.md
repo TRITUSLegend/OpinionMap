@@ -203,6 +203,20 @@ docker compose up -d --build
 ```
 Your secure deployment will now be running and accessible at `https://localhost` (or your public domain).
 
+### Hosted Deployment (Netlify + Render)
+
+- **Frontend (Netlify):** set `VITE_API_URL` to the backend's `/api` URL at build time.
+- **Backend (Render):** set `JWT_SECRET_KEY` to a random value. The app logs a warning at startup
+  if it is still the built-in default. Set `CORS_ORIGINS` to include the Netlify URL.
+- **Keep the free tier awake:** a free Render instance sleeps after about 15 minutes idle, and the
+  first request afterwards has been measured at more than 90 seconds, which is what makes the first
+  login slow. Point an uptime monitor (UptimeRobot, Better Stack, cron-job.org) at `GET` or `HEAD`
+  `https://<your-backend>/`, every 10–14 minutes. That endpoint does no database or auth work.
+  One always-on free service stays within Render's monthly free-instance hours.
+- **Password hashing cost:** `BCRYPT_ROUNDS` (default 12, allowed 10–15). Each step doubles the CPU
+  time of every login. Existing users are re-hashed at the new cost on their next login, so it can
+  be changed at any time.
+
 ### Local Development (Using Make)
 
 ```bash

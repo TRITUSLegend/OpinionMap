@@ -87,9 +87,14 @@ app.include_router(monitoring_router, prefix="/api/monitoring", tags=["monitorin
 app.include_router(admin_router, prefix="/api/admin", tags=["admin"])
 
 
-# Cheap liveness check: no DB or auth. HEAD is accepted because uptime monitors
-# default to it; pinging this every 10-14 minutes keeps a free-tier instance
-# from spinning down, which is what makes first logins time out.
-@app.api_route("/", methods=["GET", "HEAD"])
+@app.get("/")
 async def root():
     return {"name": settings.APP_NAME, "version": "1.0.0", "status": "ok"}
+
+
+# Cheap liveness check for uptime monitors, which often send HEAD (no DB or
+# auth). Pinging / every 10-14 minutes keeps a free-tier instance from spinning
+# down, which is what makes first logins time out. Kept out of the API docs.
+@app.head("/", include_in_schema=False)
+async def root_head():
+    return await root()

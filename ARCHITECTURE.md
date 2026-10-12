@@ -375,8 +375,8 @@ markdown fences or with trailing prose.
    runner reads `cron_expression` / `next_run_at`. `apscheduler` was removed as an unused
    dependency. The router carries a comment saying so. Implementing this needs a scheduler process
    (APScheduler in the backend, or an external cron hitting an internal endpoint).
-8. **Frontend bundle is one ~668 KB chunk.** Route-level `React.lazy` around the Recharts-heavy
-   Dashboard and Reports pages would cut the initial payload substantially.
+8. **Frontend bundle.** The Recharts-heavy Dashboard route is lazy-loaded. That cuts the initial
+   download from about 208 kB to 109 kB gzipped; the remaining chunk is about 101 kB gzipped.
 9. **SQLite/Postgres split.** `config.py` falls back to `sqlite+aiosqlite:///./agentflow.db` when
    `DATABASE_URL` is unset. Convenient locally, but it means local behaviour can diverge from
    production Postgres (type coercion, concurrency). Fine as long as it stays a documented dev-only
