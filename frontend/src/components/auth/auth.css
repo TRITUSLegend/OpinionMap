@@ -289,25 +289,31 @@
   position: absolute;
   left: calc((100cqw - 640 * var(--fit)) / 2 + var(--x) * var(--fit));
   top: calc(100cqh - 680 * var(--fit) + var(--y) * var(--fit));
-  width: 6px;
-  height: 6px;
-  margin: -3px 0 0 -3px;
+  /* A 22px hover target around the 6px dot. */
+  width: 22px;
+  height: 22px;
+  margin: -11px 0 0 -11px;
+  color: var(--tone);
+}
+
+/* The dot */
+.auth-pin::before {
+  content: '';
+  position: absolute;
+  inset: 8px;
   border-radius: 50%;
   background-color: currentColor;
 }
 
+/* The pulse ring */
 .auth-pin::after {
   content: '';
   position: absolute;
-  inset: -4px;
+  inset: 4px;
   border-radius: 50%;
   border: 1px solid currentColor;
   opacity: 0.6;
 }
-
-.auth-pin-positive { color: var(--positive); }
-.auth-pin-neutral { color: var(--neutral); }
-.auth-pin-negative { color: var(--negative); }
 
 /* Question cards: illustrative examples of what people research. */
 .auth-scene {
@@ -718,12 +724,8 @@
 }
 
 .auth-pin::after {
-  animation: auth-pulse 4s var(--ease-soft) infinite;
+  animation: auth-pulse 4s var(--ease-soft) var(--pulse-delay, 0s) infinite;
 }
-
-.auth-pin:nth-child(2)::after { animation-delay: 1s; }
-.auth-pin:nth-child(3)::after { animation-delay: 2s; }
-.auth-pin:nth-child(4)::after { animation-delay: 3s; }
 
 /* Each card floats on its own slow phase. */
 .scene-card {
@@ -753,6 +755,172 @@
 .auth-shell[data-paused] .auth-ambient,
 .auth-shell[data-paused] .auth-ambient::after {
   animation-play-state: paused;
+}
+
+/* ── Pin network and sentiment linking ─────────────────────────
+ * Links join neighbouring pins; a few carry a slow travelling dash.
+ * Hovering a segment, legend item or pin sets data-active on the scene.
+ * Active-tone elements get --lit: 1 (shine), the others --dim (fade).
+ * The glow is stacked, larger, lower-opacity shapes faded in with opacity:
+ * no blur filters and no animated box-shadow.
+ */
+
+.auth-scene {
+  --scene-dim: 0.38;
+  pointer-events: none;
+}
+
+:root:not(.dark) .auth-scene {
+  --scene-dim: 0.42;
+}
+
+/* Only the sentiment marks take the pointer; the rest lets clicks through. */
+.scene-seg,
+.scene-legend-item,
+.scene-spark,
+.auth-pin {
+  pointer-events: auto;
+  cursor: default;
+}
+
+@media (hover: none) {
+  .scene-seg,
+  .scene-legend-item,
+  .scene-spark,
+  .auth-pin {
+    pointer-events: none;
+  }
+}
+
+.scene-links {
+  overflow: visible;
+}
+
+.scene-link,
+.scene-signal {
+  fill: none;
+  stroke: var(--auth-contour);
+  stroke-width: 1;
+  stroke-linecap: round;
+  vector-effect: non-scaling-stroke;
+}
+
+.scene-link:not([data-tone='mixed']),
+.scene-signal:not([data-tone='mixed']) {
+  stroke: var(--tone);
+}
+
+.scene-signal {
+  stroke-width: 1.5;
+  stroke-dasharray: 6 94;
+  animation: scene-signal 8s linear infinite;
+}
+
+@keyframes scene-signal {
+  from { stroke-dashoffset: 100; }
+  to { stroke-dashoffset: 0; }
+}
+
+.auth-scene[data-active='positive'] [data-tone='positive'],
+.auth-scene[data-active='neutral'] [data-tone='neutral'],
+.auth-scene[data-active='negative'] [data-tone='negative'] {
+  --lit: 1;
+}
+
+.auth-scene[data-active='positive'] [data-tone]:not([data-tone='positive']),
+.auth-scene[data-active='neutral'] [data-tone]:not([data-tone='neutral']),
+.auth-scene[data-active='negative'] [data-tone]:not([data-tone='negative']) {
+  --dim: var(--scene-dim);
+}
+
+/* Legend text stays readable: only its dot dims. */
+.scene-seg,
+.scene-spark,
+.scene-legend-item > i {
+  opacity: var(--dim, 1);
+  transition: opacity 200ms var(--ease-soft);
+}
+
+.scene-link {
+  opacity: calc((0.25 + var(--lit, 0) * 0.45) * var(--dim, 1));
+  transition: opacity 200ms var(--ease-soft);
+}
+
+.scene-signal {
+  opacity: calc((0.6 + var(--lit, 0) * 0.35) * var(--dim, 1));
+  transition: opacity 200ms var(--ease-soft);
+}
+
+.auth-pin {
+  opacity: var(--dim, 1);
+  transform: scale(calc(1 + var(--lit, 0) * 0.35));
+  transition:
+    opacity 200ms var(--ease-soft),
+    transform 200ms var(--ease-soft);
+}
+
+/* Each card is its own stacking context, so the halos (z-index -1) stay
+   above the card surface even when the float animation is off. */
+.scene-card {
+  isolation: isolate;
+}
+
+/* Shine: a brighter (light theme: deeper) fill over the mark, plus a halo of
+   two stacked, larger, fainter shapes behind it. */
+.scene-seg > i::before,
+.scene-legend-item > i::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background-color: color-mix(in oklab, var(--tone) 72%, var(--fg));
+  opacity: var(--lit, 0);
+  transition: opacity 200ms var(--ease-soft);
+}
+
+.scene-seg > i::after,
+.scene-legend-item > i::after {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  z-index: -1;
+  border-radius: 6px;
+  background-color: var(--tone);
+  outline: 3px solid color-mix(in oklab, var(--tone) 40%, transparent);
+  opacity: calc(var(--lit, 0) * 0.25);
+  transition: opacity 200ms var(--ease-soft);
+}
+
+.scene-legend-item > i::after {
+  border-radius: 50%;
+}
+
+.scene-spark .scene-spark-halo {
+  stroke-width: 6;
+  opacity: calc(var(--lit, 0) * 0.22);
+  transition: opacity 200ms var(--ease-soft);
+}
+
+.auth-pin > i {
+  position: absolute;
+  inset: 2px;
+  border-radius: 50%;
+  background-color: currentColor;
+  outline: 5px solid color-mix(in oklab, currentColor 35%, transparent);
+  opacity: calc(var(--lit, 0) * 0.22);
+  transition: opacity 200ms var(--ease-soft);
+}
+
+/* Reduced motion: the highlight stays, but instantly, with no growth and no
+   travelling dashes. */
+@media (prefers-reduced-motion: reduce) {
+  .auth-pin {
+    transform: none;
+  }
+
+  .scene-signal {
+    display: none;
+  }
 }
 
 /* Theme switch: crossfade the shell's surfaces only. */
