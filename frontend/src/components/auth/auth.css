@@ -309,50 +309,176 @@
 .auth-pin-neutral { color: var(--neutral); }
 .auth-pin-negative { color: var(--negative); }
 
-/* A clearly labelled sample, never presented as real data. */
-.auth-sample {
+/* Question cards: illustrative examples of what people research. */
+.auth-scene {
+  user-select: none;
+}
+
+.auth-scene [data-tone='positive'] { --tone: var(--positive); }
+.auth-scene [data-tone='neutral'] { --tone: var(--neutral); }
+.auth-scene [data-tone='negative'] { --tone: var(--negative); }
+
+.auth-scene-cards {
   position: absolute;
-  top: 15%;
-  left: 46%;
-  width: 15rem;
-  padding: 14px 16px;
+  inset: 0;
+}
+
+.scene-card {
+  position: absolute;
+  /* x is relative to the centre of the 640-wide art and kept 24px clear of
+     both edges; y is from the top, in the sky above the horizon. */
+  left: clamp(24px, calc(50cqw + (var(--x) - 320) * 1px), calc(100cqw - 24px - var(--w) * 1px));
+  top: calc(var(--y) * 1px);
+  width: calc(var(--w) * 1px);
+  padding: 12px 14px 13px;
   border-radius: 14px;
-  background-color: color-mix(in oklab, var(--auth-panel) 86%, transparent);
+  background-color: color-mix(in oklab, var(--auth-panel) 88%, transparent);
   border: 1px solid var(--auth-frame);
 }
 
-.auth-sample-topic {
+:root:not(.dark) .scene-card {
+  box-shadow: 0 12px 28px -18px rgb(60 40 20 / 0.4);
+}
+
+.scene-card-product { --x: 28; --y: 26; --w: 268; }
+.scene-card-compare { --x: 370; --y: 40; --w: 240; }
+.scene-card-policy { --x: 40; --y: 168; --w: 252; }
+.scene-card-mood { --x: 314; --y: 180; --w: 300; }
+.scene-card-event { --x: 214; --y: 304; --w: 212; }
+
+/* Narrower desktop widths and short scenes: three cards, re-spaced. */
+@media (max-width: 1279.98px) {
+  .scene-card-extra { display: none; }
+  .scene-card-mood { --x: 140; --y: 180; --w: 296; }
+}
+
+@container (max-height: 640px) {
+  .scene-card-extra { display: none; }
+  .scene-card-mood { --x: 140; --y: 180; --w: 296; }
+}
+
+.scene-tag {
+  font-size: 0.625rem;
+  line-height: 0.875rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--auth-muted);
+}
+
+.scene-question {
+  margin-top: 3px;
   font-size: 0.875rem;
-  font-weight: 500;
+  line-height: 1.25rem;
+  font-weight: 600;
   color: var(--fg);
 }
 
-.auth-sample-bar {
+.scene-bar {
   display: flex;
-  gap: 2px;
-  height: 6px;
-  margin-top: 12px;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
 }
 
-.auth-sample-bar span {
-  border-radius: 3px;
-}
-
-.auth-sample-legend {
-  display: flex;
-  gap: 12px;
-  margin-top: 10px;
+.scene-bar-label {
+  width: 28px;
+  flex: none;
   font-size: 0.6875rem;
   color: var(--auth-muted);
 }
 
-.auth-sample-legend i {
-  display: inline-block;
+.scene-bar-track {
+  display: flex;
+  flex: 1;
+  gap: 2px;
+  min-width: 0;
+}
+
+/* A 14px-tall segment around a 6px bar: a comfortable hover target. */
+.scene-seg {
+  position: relative;
+  height: 14px;
+  min-width: 6px;
+}
+
+.scene-seg > i {
+  position: absolute;
+  inset: 4px 0;
+  border-radius: 3px;
+  background-color: var(--tone);
+}
+
+.scene-legend {
+  display: flex;
+  gap: 8px;
+  margin-top: 2px;
+  font-size: 0.6875rem;
+  color: var(--auth-muted);
+}
+
+.scene-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 14px;
+  white-space: nowrap;
+}
+
+.scene-legend-item > i {
+  position: relative;
   width: 6px;
   height: 6px;
-  margin-right: 5px;
   border-radius: 50%;
-  vertical-align: 1px;
+  background-color: var(--tone);
+}
+
+.scene-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 8px;
+}
+
+.scene-chips span {
+  padding: 0 6px;
+  border-radius: 999px;
+  border: 1px solid var(--auth-frame);
+  background-color: var(--auth-field);
+  font-size: 0.65625rem;
+  line-height: 1.125rem;
+  color: var(--auth-muted);
+  white-space: nowrap;
+}
+
+.scene-chips b {
+  font-weight: 600;
+  color: var(--fg);
+}
+
+.scene-spark {
+  display: block;
+  width: 100%;
+  height: 32px;
+  margin-top: 8px;
+  overflow: visible;
+}
+
+.scene-spark polyline {
+  fill: none;
+  stroke: var(--tone);
+  stroke-width: 1.5;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+  vector-effect: non-scaling-stroke;
+}
+
+.scene-spark-axis {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 2px;
+  font-size: 0.625rem;
+  color: var(--auth-muted);
 }
 
 .auth-tagline {
@@ -577,10 +703,9 @@
   transition: color 200ms var(--ease-soft);
 }
 
-/* Scene life: opposite slow drifts, staggered pin pulses, a floating card. */
+/* Scene life: opposite slow drifts, staggered pin pulses, floating cards. */
 .auth-scene-far,
-.auth-scene-near,
-.auth-sample {
+.auth-scene-near {
   will-change: transform;
 }
 
@@ -600,23 +725,30 @@
 .auth-pin:nth-child(3)::after { animation-delay: 2s; }
 .auth-pin:nth-child(4)::after { animation-delay: 3s; }
 
-.auth-sample {
-  animation: auth-float 6s ease-in-out infinite alternate;
+/* Each card floats on its own slow phase. */
+.scene-card {
+  animation: auth-float var(--float) ease-in-out var(--delay) infinite alternate;
 }
+
+.scene-card-product { --float: 6.4s; --delay: 0s; }
+.scene-card-compare { --float: 8.2s; --delay: -2.5s; }
+.scene-card-policy { --float: 7.4s; --delay: -4s; }
+.scene-card-mood { --float: 8.8s; --delay: -1.2s; }
+.scene-card-event { --float: 6.9s; --delay: -3.3s; }
 
 /* Pointer parallax (--px / --py, -1..1): nearer layers move further. Uses
    the individual translate property so it composes with the drift. */
 .auth-scene-far,
 .auth-scene-near,
 .auth-scene-pins,
-.auth-sample {
+.auth-scene-cards {
   transition: translate 600ms var(--ease-soft);
 }
 
 .auth-scene-far { translate: calc(var(--px, 0) * -2px) calc(var(--py, 0) * -1px); }
 .auth-scene-near,
 .auth-scene-pins { translate: calc(var(--px, 0) * -4px) calc(var(--py, 0) * -2px); }
-.auth-sample { translate: calc(var(--px, 0) * -6px) calc(var(--py, 0) * -3px); }
+.auth-scene-cards { translate: calc(var(--px, 0) * -6px) calc(var(--py, 0) * -3px); }
 
 .auth-shell[data-paused] .auth-ambient,
 .auth-shell[data-paused] .auth-ambient::after {
@@ -624,7 +756,7 @@
 }
 
 /* Theme switch: crossfade the shell's surfaces only. */
-html.theme-transition .auth-shell :is(.auth-backdrop, .auth-card, .auth-panel, .auth-segment, .auth-segment-indicator, .auth-sample, .input, .auth-title, .auth-subtitle, .auth-footer) {
+html.theme-transition .auth-shell :is(.auth-backdrop, .auth-card, .auth-panel, .auth-segment, .auth-segment-indicator, .scene-card, .input, .auth-title, .auth-subtitle, .auth-footer) {
   transition:
     background-color 200ms var(--ease-soft),
     border-color 200ms var(--ease-soft),
