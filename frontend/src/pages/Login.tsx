@@ -87,6 +87,7 @@ export const Login = () => {
 
   return (
     <AuthShell
+      errorKey={formError?.key}
       title="Welcome back"
       subtitle="Sign in to your OpinionMap workspace"
       footer={

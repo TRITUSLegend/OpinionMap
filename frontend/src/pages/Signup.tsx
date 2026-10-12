@@ -83,6 +83,7 @@ export const Signup = () => {
 
   return (
     <AuthShell
+      errorKey={formError?.key}
       title="Create your workspace"
       subtitle="Start mapping opinion with OpinionMap"
       footer={

@@ -245,6 +245,7 @@
   position: relative;
   display: none;
   overflow: hidden;
+  container-type: size;
   border-left: 1px solid var(--auth-frame);
   /* Transparent base: the page atmosphere shows through, so the scene bleeds
      into the background around the card. */
@@ -278,16 +279,30 @@
   vector-effect: non-scaling-stroke;
 }
 
-.auth-pin-dot {
-  fill: currentColor;
+/* Pins sit at viewBox coordinates (--x, --y) mapped through the same fit as
+   the SVG layers (xMidYMax slice): scaled to cover, centred, bottom-aligned. */
+.auth-scene-pins {
+  --fit: max(100cqw / 640, 100cqh / 680);
 }
 
-.auth-pin-ring {
-  fill: none;
-  stroke: currentColor;
-  stroke-opacity: 0.6;
-  transform-box: fill-box;
-  transform-origin: center;
+.auth-pin {
+  position: absolute;
+  left: calc((100cqw - 640 * var(--fit)) / 2 + var(--x) * var(--fit));
+  top: calc(100cqh - 680 * var(--fit) + var(--y) * var(--fit));
+  width: 6px;
+  height: 6px;
+  margin: -3px 0 0 -3px;
+  border-radius: 50%;
+  background-color: currentColor;
+}
+
+.auth-pin::after {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  border-radius: 50%;
+  border: 1px solid currentColor;
+  opacity: 0.6;
 }
 
 .auth-pin-positive { color: var(--positive); }
@@ -441,5 +456,192 @@
 
   .auth-children {
     margin-top: 20px;
+  }
+}
+
+/* ── Motion ────────────────────────────────────────────────────
+ * Transform and opacity only, one easing token (--ease-soft), 160-480ms for
+ * interface motion. The ambient scene loops are slow and composited, pause
+ * while the tab is hidden, and everything is off under reduced motion.
+ */
+
+@keyframes auth-rise {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 12px, 0);
+  }
+}
+
+@keyframes auth-rise-sm {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 8px, 0);
+  }
+}
+
+@keyframes auth-drop {
+  from {
+    opacity: 0;
+    transform: translate3d(0, -6px, 0);
+  }
+}
+
+@keyframes auth-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes auth-drift-a {
+  from { transform: translate3d(-6px, 0, 0); }
+  to { transform: translate3d(6px, 0, 0); }
+}
+
+@keyframes auth-drift-b {
+  from { transform: translate3d(6px, 0, 0); }
+  to { transform: translate3d(-6px, 0, 0); }
+}
+
+@keyframes auth-pulse {
+  0% {
+    opacity: 0.7;
+    transform: scale(1);
+  }
+  70%,
+  100% {
+    opacity: 0;
+    transform: scale(2.1);
+  }
+}
+
+@keyframes auth-float {
+  from { transform: translate3d(0, -4px, 0); }
+  to { transform: translate3d(0, 4px, 0); }
+}
+
+/* Entrance: the card rises once, then its contents follow ~50ms apart. */
+.auth-card {
+  animation: auth-rise 420ms var(--ease-soft) backwards;
+}
+
+.auth-title,
+.auth-subtitle,
+.auth-children > :not(form, [role='alert'], [role='status']),
+.auth-form > *,
+.auth-footer {
+  animation: auth-rise-sm 420ms var(--ease-soft) backwards;
+  animation-delay: calc(140ms + var(--i, 0) * 50ms);
+}
+
+.auth-subtitle { --i: 1; }
+.auth-children > :not(form, [role='alert'], [role='status']) { --i: 2; }
+.auth-form > :nth-child(1) { --i: 3; }
+.auth-form > :nth-child(2) { --i: 4; }
+.auth-form > :nth-child(3) { --i: 5; }
+.auth-form > :nth-child(4) { --i: 6; }
+.auth-form > :nth-child(5) { --i: 7; }
+.auth-footer { --i: 8; }
+
+/* Form-level messages slide down; field errors fade in under the field. */
+.auth-children > :is([role='alert'], [role='status']) {
+  animation: auth-drop 240ms var(--ease-soft) backwards;
+}
+
+.auth-shell p[id$='-error'] {
+  animation: auth-fade 200ms var(--ease-soft) backwards;
+}
+
+.auth-shell .input {
+  transition:
+    border-color 160ms var(--ease-soft),
+    outline-color 160ms var(--ease-soft),
+    background-color 200ms var(--ease-soft);
+}
+
+.auth-shell .btn-primary {
+  transition:
+    transform 160ms var(--ease-soft),
+    background-color 160ms var(--ease-soft);
+}
+
+.auth-shell .btn-primary:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+.auth-shell .btn-primary:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+.auth-segment-indicator {
+  transition: transform 280ms var(--ease-soft);
+}
+
+.auth-segment-option {
+  transition: color 200ms var(--ease-soft);
+}
+
+/* Scene life: opposite slow drifts, staggered pin pulses, a floating card. */
+.auth-scene-far,
+.auth-scene-near,
+.auth-sample {
+  will-change: transform;
+}
+
+.auth-scene-far {
+  animation: auth-drift-a 52s linear infinite alternate;
+}
+
+.auth-scene-near {
+  animation: auth-drift-b 38s linear infinite alternate;
+}
+
+.auth-pin::after {
+  animation: auth-pulse 4s var(--ease-soft) infinite;
+}
+
+.auth-pin:nth-child(2)::after { animation-delay: 1s; }
+.auth-pin:nth-child(3)::after { animation-delay: 2s; }
+.auth-pin:nth-child(4)::after { animation-delay: 3s; }
+
+.auth-sample {
+  animation: auth-float 6s ease-in-out infinite alternate;
+}
+
+/* Pointer parallax (--px / --py, -1..1): nearer layers move further. Uses
+   the individual translate property so it composes with the drift. */
+.auth-scene-far,
+.auth-scene-near,
+.auth-scene-pins,
+.auth-sample {
+  transition: translate 600ms var(--ease-soft);
+}
+
+.auth-scene-far { translate: calc(var(--px, 0) * -2px) calc(var(--py, 0) * -1px); }
+.auth-scene-near,
+.auth-scene-pins { translate: calc(var(--px, 0) * -4px) calc(var(--py, 0) * -2px); }
+.auth-sample { translate: calc(var(--px, 0) * -6px) calc(var(--py, 0) * -3px); }
+
+.auth-shell[data-paused] .auth-ambient,
+.auth-shell[data-paused] .auth-ambient::after {
+  animation-play-state: paused;
+}
+
+/* Theme switch: crossfade the shell's surfaces only. */
+html.theme-transition .auth-shell :is(.auth-backdrop, .auth-card, .auth-panel, .auth-segment, .auth-segment-indicator, .auth-sample, .input, .auth-title, .auth-subtitle, .auth-footer) {
+  transition:
+    background-color 200ms var(--ease-soft),
+    border-color 200ms var(--ease-soft),
+    color 200ms var(--ease-soft) !important;
+}
+
+html.theme-transition .auth-contours path {
+  transition: stroke 200ms var(--ease-soft);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .auth-shell *,
+  .auth-shell *::before,
+  .auth-shell *::after {
+    animation: none !important;
   }
 }

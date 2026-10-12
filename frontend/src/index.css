@@ -93,6 +93,8 @@
   --dur-fast: 120ms;
   --dur: 180ms;
   --dur-slow: 240ms;
+  /* Gentler ease-out for the auth screens' entrance and ambient motion. */
+  --ease-soft: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 :root.dark {
