@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta, timezone
+from functools import lru_cache
 from typing import Optional, Any
 from uuid import UUID
 from jose import jwt, JWTError
@@ -7,6 +8,7 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+from starlette.concurrency import run_in_threadpool
 
 from app.config import settings
 from app.database import get_db
@@ -14,14 +16,45 @@ from app.models.user import User
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
 
-# Fixed demo user UUID
-DEMO_USER_ID = UUID("00000000-0000-0000-0000-000000000001")
-
 def hash_password(password: str) -> str:
-    return bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
+    return bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt(settings.BCRYPT_ROUNDS)).decode("utf-8")
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    return bcrypt.checkpw(plain_password.encode("utf-8"), hashed_password.encode("utf-8"))
+    try:
+        return bcrypt.checkpw(plain_password.encode("utf-8"), hashed_password.encode("utf-8"))
+    except ValueError:
+        # bcrypt>=5 raises for passwords over 72 bytes and for malformed hashes.
+        # Neither can match, so report a failed check instead of a 500.
+        return False
+
+def password_needs_rehash(hashed_password: str) -> bool:
+    """True when a stored hash was made with a cost other than BCRYPT_ROUNDS."""
+    try:
+        return int(hashed_password.split("$")[2]) != settings.BCRYPT_ROUNDS
+    except (IndexError, ValueError):
+        return False
+
+@lru_cache(maxsize=1)
+def _dummy_hash() -> str:
+    return hash_password("timing-equaliser-never-a-real-password")
+
+# bcrypt is deliberately CPU-heavy. Called directly inside an async handler it
+# blocks the event loop, so concurrent logins queue behind each other and every
+# other request stalls. These wrappers run it in the threadpool instead.
+
+async def hash_password_async(password: str) -> str:
+    return await run_in_threadpool(hash_password, password)
+
+async def verify_password_async(plain_password: str, hashed_password: Optional[str]) -> bool:
+    """Verify off the event loop.
+
+    With no stored hash (unknown user) this still performs one bcrypt check, against
+    a dummy hash, so response time does not reveal whether an account exists.
+    """
+    if hashed_password is None:
+        await run_in_threadpool(lambda: verify_password(plain_password, _dummy_hash()))
+        return False
+    return await run_in_threadpool(verify_password, plain_password, hashed_password)
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
     to_encode = data.copy()

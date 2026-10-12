@@ -4,6 +4,7 @@ OpinionMap - Application configuration
 Loads all settings from environment variables and .env file using pydantic-settings.
 """
 
+from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -36,6 +37,12 @@ class Settings(BaseSettings):
     # 480 minutes (8 hours): the previous 30-minute expiry logged users out
     # mid-session, and there is no refresh-token flow to recover from it.
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 480
+
+    # bcrypt work factor for new password hashes. Each step doubles the cost
+    # (~180 ms at 12 on one desktop core, roughly 10x that on a 0.1-CPU
+    # instance). Stored hashes made with a different value are re-hashed on the
+    # user's next successful login. Values below 10 are rejected.
+    BCRYPT_ROUNDS: int = Field(default=12, ge=10, le=15)
 
     # YouTube Data API
     YOUTUBE_API_KEY: str = ""

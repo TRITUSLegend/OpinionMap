@@ -223,16 +223,17 @@ was pure overhead. See Performance below.
 
 ### Endpoint Map
 
-26 paths. All `/api/*` routes except registration and login require a bearer token.
+27 paths. All `/api/*` routes except registration and login require a bearer token.
 
 | Method | Path | Auth | Description |
 |---|---|---|---|
 | GET | `/` | none | Service name, version, status |
 | GET | `/metrics` | none | Prometheus exposition |
-| POST | `/api/auth/register` | none | Create account, returns token |
+| POST | `/api/auth/register` | none | Create account; returns the user (no token). The first account becomes admin |
 | POST | `/api/auth/login` | none | OAuth2 password form, returns token |
 | POST | `/api/auth/admin-login` | none | Admin login variant |
-| GET | `/api/auth/users` | user | List users (self-scoped for non-admins) |
+| GET | `/api/auth/me` | user | The caller's own profile; the frontend uses it to validate a stored session |
+| GET | `/api/auth/users` | admin | List all users |
 | POST | `/api/workflows/` | user | Create workflow, schedules background pipeline |
 | GET | `/api/workflows/` | user | Paginated workflow list |
 | GET | `/api/workflows/{id}` | user + owner | Single workflow |
@@ -310,16 +311,22 @@ is why `ix_workflows_user_id` and `ix_scraped_data_workflow_source` matter most 
 
 ### Auth Flow
 
-1. `POST /api/auth/register` or `/login` verifies credentials with bcrypt.
+1. `POST /api/auth/login` verifies credentials with bcrypt (cost `BCRYPT_ROUNDS`, default 12),
+   run in the threadpool so it never blocks the event loop. Unknown email, wrong password and
+   inactive account return the same `401 Invalid email or password`, and unknown emails are
+   checked against a dummy hash so timing does not reveal which accounts exist.
 2. The server issues an HS256 JWT signed with `JWT_SECRET_KEY`, expiring after
-   `ACCESS_TOKEN_EXPIRE_MINUTES` (default 30).
+   `ACCESS_TOKEN_EXPIRE_MINUTES` (default 480, i.e. 8 hours).
 3. The browser stores the token in `localStorage`, and an axios request interceptor attaches it as
    `Authorization: Bearer <token>`.
 4. `get_current_user` decodes and validates the token per request and loads the `User` row.
    `require_role("admin")` layers a role check on top for admin routes.
-5. An axios response interceptor catches any `401`, clears `localStorage`, and redirects to `/login`.
+5. On load the frontend drops a stored token that is malformed or past its `exp`, then confirms the
+   rest with `GET /api/auth/me`.
+6. An axios response interceptor catches any `401` outside the auth forms, clears `localStorage`,
+   and redirects to `/login`.
 
-**There is no refresh token.** When the 30-minute JWT expires the user is bounced to the login
+**There is no refresh token.** When the 8-hour JWT expires the user is bounced to the login
 screen mid-session, losing whatever they were doing. `localStorage` also means the token is readable
 by any successful XSS. Both are documented as future work below.
 
@@ -343,10 +350,10 @@ markdown fences or with trailing prose.
 
 ### High Priority
 
-1. **No test suite.** `backend/tests/` does not exist. `pytest` and `pytest-asyncio` are already in
+1. **Thin test suite.** `backend/tests/` covers authentication only. `pytest` and `pytest-asyncio` are already in
    `requirements.txt` but unused. This is the single largest risk to the project — every change is
    verified manually.
-2. **No refresh token.** A 30-minute expiry with a hard redirect to `/login` will interrupt a
+2. **No refresh token.** An 8-hour expiry with a hard redirect to `/login` will interrupt a
    demo mid-flow. Either implement refresh tokens or raise the expiry for demo runs.
 3. **Bluesky needs credentials or it silently mocks.** `BLUESKY_IDENTIFIER` and
    `BLUESKY_APP_PASSWORD` must be set in `.env`, otherwise the source produces mock data with only a
@@ -410,7 +417,8 @@ and their fallback paths. Worth doing before the deprecated package stops receiv
 
 ### Specific Future Work: Test Suite
 
-`backend/tests/` does not exist. Recommended order, highest value first:
+`backend/tests/test_auth.py` covers login, registration and user listing (`cd backend && pytest`).
+Recommended next, highest value first:
 
 1. **Scraper fallback contract** — for all seven scrapers, assert `_scrape_impl` never raises with
    the network unavailable, always returns the `{source, content, metadata}` shape, and returns the

@@ -227,7 +227,8 @@ OpinionMap provides interactive API documentation:
 |:---|:---|:---|
 | `POST` | `/api/auth/register` | Register a new user account |
 | `POST` | `/api/auth/login` | Authenticate and receive JWT token |
-| `GET` | `/api/auth/users` | List users (authenticated) |
+| `GET` | `/api/auth/me` | Current user's profile |
+| `GET` | `/api/auth/users` | List users (admin only) |
 | `POST` | `/api/workflows/` | Create and run a new analysis workflow |
 | `GET` | `/api/workflows/` | List all workflows for the current user |
 | `GET` | `/api/workflows/{id}` | Get workflow status and results |
@@ -264,7 +265,7 @@ OpinionMap/
 │   │   ├── services/          # Business logic layer
 │   │   ├── database.py        # Database connection setup
 │   │   └── main.py            # FastAPI application entry
-│   ├── tests/                 # (not yet implemented — planned)
+│   ├── tests/                 # pytest suite (auth)
 │   ├── alembic.ini            # Alembic configuration
 │   ├── Dockerfile             # Backend container
 │   └── requirements.txt       # Python dependencies
@@ -292,7 +293,7 @@ OpinionMap/
 └── README.md                  # This file
 ```
 
-> **Note on tests:** an automated backend test suite is not yet implemented. `pytest` and `pytest-asyncio` are already declared in `backend/requirements.txt`, so `backend/tests/` can be added without further setup. Until then `make test` and `make test-cov` print a notice instead of running anything, and `make format` / `make lint` do the same (black, isort, ruff and mypy are intentionally not runtime dependencies).
+> **Note on tests:** `backend/tests/` covers authentication (login, registration, user listing) and runs with `make test` or `cd backend && pytest`; it uses a throwaway SQLite database. `make test-cov`, `make format` and `make lint` still print a notice instead of running anything (pytest-cov, black, isort, ruff and mypy are intentionally not runtime dependencies).
 
 ---
 
