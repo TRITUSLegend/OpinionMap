@@ -70,7 +70,7 @@ export const Signup = () => {
         const data = await apiLogin(formData);
         login(data.access_token, data.user);
         toast('Account created. Welcome to OpinionMap.');
-        navigate('/');
+        navigate('/dashboard');
       } catch {
         navigate('/login', { replace: true, state: { notice: 'Your account was created. Please sign in.' } });
       }
