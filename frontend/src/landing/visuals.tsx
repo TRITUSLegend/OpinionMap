@@ -62,8 +62,8 @@ export const SampleRun = () => (
       </svg>
       <ol>
         {RUN_STEPS.map((step, i) => (
-          <li key={step} className={`lp-run-step lp-run-s${i + 1} lp-ambient`}>
-            <i />
+          <li key={step} className={`lp-run-step lp-run-s${i + 1}`}>
+            <i className="lp-ambient" />
             <span className="lp-mono">{step}</span>
           </li>
         ))}

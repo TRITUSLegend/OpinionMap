@@ -45,26 +45,22 @@ export const useLandingMotion = (
     });
     root.querySelectorAll('[data-section], [data-sentinel]').forEach((el) => inview.observe(el));
 
-    const links = [...root.querySelectorAll<HTMLAnchorElement>('a[data-nav]')];
-    const active = new IntersectionObserver(
-      (entries) => {
-        for (const entry of entries) {
-          const link = links.find((l) => l.hash === `#${entry.target.id}`);
-          if (entry.isIntersecting) {
-            links.forEach((l) => l !== link && l.removeAttribute('aria-current'));
-            link?.setAttribute('aria-current', 'true');
-          } else {
-            // Leaving the middle band (e.g. back up to the hero) clears it.
-            link?.removeAttribute('aria-current');
-          }
-        }
-      },
-      { rootMargin: '-45% 0px -50% 0px' },
-    );
-    links.forEach((link) => {
-      const target = root.querySelector(link.hash);
-      if (target) active.observe(target);
-    });
+    // The current link belongs to the last linked section whose top has passed
+    // the middle of the screen; none while the hero fills it. Worked out only
+    // when some section crosses a band at the middle, so jumps can't leave it stale.
+    const tracked = [...root.querySelectorAll<HTMLAnchorElement>('a[data-nav]')]
+      .map((link) => ({ link, section: root.querySelector(link.hash) }))
+      .filter((t): t is { link: HTMLAnchorElement; section: Element } => t.section !== null);
+    const markCurrent = () => {
+      const middle = window.innerHeight / 2;
+      const current = tracked.filter((t) => t.section.getBoundingClientRect().top <= middle).pop();
+      for (const { link } of tracked) {
+        if (link === current?.link) link.setAttribute('aria-current', 'true');
+        else link.removeAttribute('aria-current');
+      }
+    };
+    const active = new IntersectionObserver(markCurrent, { rootMargin: '-45% 0px -50% 0px' });
+    root.querySelectorAll('[data-section]').forEach((el) => active.observe(el));
 
     let frame = 0;
     const paint = () => {

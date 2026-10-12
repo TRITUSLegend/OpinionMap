@@ -610,12 +610,12 @@
   color: var(--lp-muted);
 }
 
-.lp-run-s1 { animation: lp-s1 12s linear infinite; }
-.lp-run-s2 { animation: lp-s2 12s linear infinite; }
-.lp-run-s3 { animation: lp-s3 12s linear infinite; }
-.lp-run-s4 { animation: lp-s4 12s linear infinite; }
-.lp-run-s5 { animation: lp-s5 12s linear infinite; }
-.lp-run-s6 { animation: lp-s6 12s linear infinite; }
+.lp-run-s1 i { animation: lp-s1 12s linear infinite; }
+.lp-run-s2 i { animation: lp-s2 12s linear infinite; }
+.lp-run-s3 i { animation: lp-s3 12s linear infinite; }
+.lp-run-s4 i { animation: lp-s4 12s linear infinite; }
+.lp-run-s5 i { animation: lp-s5 12s linear infinite; }
+.lp-run-s6 i { animation: lp-s6 12s linear infinite; }
 
 .lp-run-bars {
   display: grid;
@@ -906,6 +906,11 @@
   right: 16px;
   bottom: 12px;
   font-size: 0.625rem;
+}
+
+/* Room for the footnote, so wrapped content never runs into it. */
+.lp-card:has(.lp-card-foot) {
+  padding-bottom: 36px;
 }
 
 .lp-viz {
