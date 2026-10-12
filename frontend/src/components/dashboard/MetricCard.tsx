@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 
 interface MetricCardProps {
   title: string;
-  value: string | number;
+  value: ReactNode;
   icon: ReactNode;
   trend?: {
     value: number;
