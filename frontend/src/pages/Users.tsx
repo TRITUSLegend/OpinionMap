@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Users as UsersIcon, Shield, Mail, Calendar } from 'lucide-react';
 import { fetchUsers } from '../api/client';
+import { SkeletonRows } from '../components/ui/SkeletonRows';
 
 interface UserItem {
   id: string;
@@ -44,8 +45,9 @@ export const Users = () => {
       </div>
 
       <div className="card overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm min-w-[800px]">
+        {/* Bounded scroll area so the column headers can stay pinned. */}
+        <div className="overflow-auto max-h-[min(70vh,720px)]">
+          <table className="table-sticky w-full text-left text-sm min-w-[800px]">
             <thead className="bg-surface-2 border-b border-border">
               <tr>
                 <th scope="col" className="caption px-4 py-3">User</th>
@@ -54,9 +56,9 @@ export const Users = () => {
                 <th scope="col" className="caption px-4 py-3">Joined</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-border">
+            <tbody className="divide-y divide-border" aria-busy={loading}>
               {loading ? (
-                <tr><td colSpan={4} className="p-8 text-center text-muted">Loading users...</td></tr>
+                <SkeletonRows columns={4} />
               ) : users.length === 0 ? (
                 <tr><td colSpan={4} className="p-8 text-center text-muted">No users found.</td></tr>
               ) : (

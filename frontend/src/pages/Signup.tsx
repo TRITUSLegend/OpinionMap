@@ -1,39 +1,83 @@
-import { useState } from 'react';
-import axios from 'axios';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { UserPlus, Loader2 } from 'lucide-react';
+import { UserPlus } from 'lucide-react';
 import { useAuth } from '../context/auth-context';
-import { register as apiRegister } from '../api/client';
+import { login as apiLogin, register as apiRegister, wakeServer } from '../api/client';
 import { AuthShell } from '../components/layout/AuthShell';
+import { Field } from '../components/ui/Field';
+import { FormMessage } from '../components/ui/FormMessage';
+import { PasswordInput } from '../components/ui/PasswordInput';
+import { SubmitButton } from '../components/ui/SubmitButton';
+import { useToast } from '../components/ui/toast-context';
+import { useFormFields } from '../hooks/useFormFields';
+import { useSlowRequestHint } from '../hooks/useSlowRequestHint';
+import { describeApiError } from '../lib/api-errors';
+import { PASSWORD_MIN_LENGTH, validateEmail, validateFullName, validateNewPassword } from '../lib/validation';
+
+const FIELD_IDS = { fullName: 'signup-name', email: 'signup-email', password: 'signup-password' } as const;
 
 export const Signup = () => {
-  const [fullName, setFullName] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [formError, setFormError] = useState<{ text: string; key: number } | null>(null);
+  const submittingRef = useRef(false);
   const navigate = useNavigate();
-  const { login } = useAuth();
+  const { login, clearSession } = useAuth();
+  const toast = useToast();
+  const slowHint = useSlowRequestHint();
+  const form = useFormFields(
+    { fullName: '', email: '', password: '' },
+    { fullName: validateFullName, email: validateEmail, password: validateNewPassword },
+  );
+
+  // Start waking a sleeping backend while the user is still typing.
+  useEffect(() => {
+    wakeServer();
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
-    setError('');
+    if (submittingRef.current) return;
+    setFormError(null);
+
+    const invalid = form.validateAll();
+    if (invalid) {
+      document.getElementById(FIELD_IDS[invalid])?.focus();
+      return;
+    }
+
+    submittingRef.current = true;
+    setSubmitting(true);
+    slowHint.start();
+    clearSession();
+    const { fullName, email, password } = form.values;
 
     try {
-      const data = await apiRegister({
-        email,
-        full_name: fullName,
-        password
-      });
-      login(data.access_token, data.user);
-      navigate('/');
-    } catch (err) {
-      const detail = axios.isAxiosError(err) ? err.response?.data?.detail : undefined;
-      const message = detail || (err instanceof Error ? err.message : 'Failed to create account');
-      setError(message);
+      try {
+        await apiRegister({ email, full_name: fullName.trim(), password });
+      } catch (err) {
+        const { message, fieldErrors } = describeApiError(err, 'register');
+        form.setServerErrors({ fullName: fieldErrors.full_name, email: fieldErrors.email, password: fieldErrors.password });
+        setFormError({ text: message, key: Date.now() });
+        return;
+      }
+
+      // /auth/register returns the new user, not a session, so sign in with
+      // the same credentials to keep the "sign up and you're in" flow.
+      try {
+        const formData = new URLSearchParams();
+        formData.append('username', email);
+        formData.append('password', password);
+        const data = await apiLogin(formData);
+        login(data.access_token, data.user);
+        toast('Account created. Welcome to OpinionMap.');
+        navigate('/');
+      } catch {
+        navigate('/login', { replace: true, state: { notice: 'Your account was created. Please sign in.' } });
+      }
     } finally {
-      setLoading(false);
+      submittingRef.current = false;
+      setSubmitting(false);
+      slowHint.stop();
     }
   };
 
@@ -48,60 +92,52 @@ export const Signup = () => {
         </>
       }
     >
-      {error && (
-        <div className="border border-danger/40 bg-danger/10 text-fg p-3 rounded-md mb-5 text-sm" role="alert">
-          {error}
-        </div>
+      {formError && (
+        <FormMessage key={formError.key} tone="error" className="mb-5">{formError.text}</FormMessage>
       )}
 
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div>
-          <label htmlFor="signup-name" className="block text-sm font-medium text-fg mb-1.5">Full name</label>
-          <input
-            id="signup-name"
-            type="text"
-            value={fullName}
-            onChange={(e) => setFullName(e.target.value)}
-            className="input"
-            placeholder="Jane Doe"
-            required
-          />
-        </div>
+      <form onSubmit={handleSubmit} noValidate className="space-y-4">
+        <Field id={FIELD_IDS.fullName} label="Full name" error={form.errorFor('fullName')}>
+          {(control) => (
+            <input {...control} {...form.bind('fullName')} type="text" autoComplete="name" className="input" placeholder="Jane Doe" />
+          )}
+        </Field>
 
-        <div>
-          <label htmlFor="signup-email" className="block text-sm font-medium text-fg mb-1.5">Email address</label>
-          <input
-            id="signup-email"
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="input"
-            placeholder="you@company.com"
-            required
-          />
-        </div>
+        <Field id={FIELD_IDS.email} label="Email address" error={form.errorFor('email')}>
+          {(control) => (
+            <input
+              {...control}
+              {...form.bind('email')}
+              type="email"
+              autoComplete="email"
+              inputMode="email"
+              autoCapitalize="none"
+              spellCheck={false}
+              className="input"
+              placeholder="you@company.com"
+            />
+          )}
+        </Field>
 
-        <div>
-          <label htmlFor="signup-password" className="block text-sm font-medium text-fg mb-1.5">Password</label>
-          <input
-            id="signup-password"
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="input"
-            required
-            minLength={6}
-          />
-        </div>
-
-        <button
-          type="submit"
-          disabled={loading}
-          className="btn btn-primary w-full min-h-10 mt-2"
+        <Field
+          id={FIELD_IDS.password}
+          label="Password"
+          error={form.errorFor('password')}
+          hint={`At least ${PASSWORD_MIN_LENGTH} characters.`}
         >
-          {loading ? <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" /> : <UserPlus className="w-4 h-4" aria-hidden="true" />}
-          {loading ? 'Creating account...' : 'Create account'}
-        </button>
+          {(control) => (
+            <PasswordInput {...control} {...form.bind('password')} autoComplete="new-password" />
+          )}
+        </Field>
+
+        <SubmitButton loading={submitting} loadingLabel="Creating account…" className="w-full min-h-10 mt-2">
+          <UserPlus className="w-4 h-4" aria-hidden="true" />
+          Create account
+        </SubmitButton>
+
+        <p role="status" className="text-xs text-muted text-center min-h-4">
+          {slowHint.slow && 'Waking up the server. The first request after a quiet spell can take up to a minute.'}
+        </p>
       </form>
     </AuthShell>
   );

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { FileText, Download, Trash2 } from 'lucide-react';
 import { fetchReports, deleteReport } from '../api/client';
+import { useToast } from '../components/ui/toast-context';
 
 interface ReportItem {
   id: string;
@@ -14,6 +15,7 @@ interface ReportItem {
 export const Reports = () => {
   const [reports, setReports] = useState<ReportItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const toast = useToast();
 
   useEffect(() => {
     let cancelled = false;
@@ -38,7 +40,9 @@ export const Reports = () => {
       </div>
 
       {loading ? (
-        <div className="text-center p-12 text-muted">Loading reports...</div>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6" role="status" aria-label="Loading reports">
+          {[0, 1].map((i) => <div key={i} className="skeleton h-60 rounded-lg" />)}
+        </div>
       ) : reports.length === 0 ? (
         <div className="card text-center p-12 text-muted">
           No reports generated yet. Complete a workflow to see results here.
@@ -73,7 +77,7 @@ export const Reports = () => {
                         window.URL.revokeObjectURL(url);
                       } catch (error) {
                         console.error('Download failed', error);
-                        alert('Failed to download PDF. Please try again.');
+                        toast('Failed to download the PDF. Please try again.', 'error');
                       }
                     }}
                     className="icon-btn" title="Download PDF" aria-label="Download PDF">

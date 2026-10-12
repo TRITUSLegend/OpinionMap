@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { LogoMark } from '../ui/Logo';
 import { ThemeToggle } from '../ui/ThemeToggle';
+import { StorageNotice } from '../StorageNotice';
 
 interface AuthShellProps {
   title: string;
@@ -15,7 +16,7 @@ export const AuthShell = ({ title, subtitle, children, footer }: AuthShellProps)
     <div className="flex justify-end p-3">
       <ThemeToggle />
     </div>
-    <main className="flex-1 flex items-start sm:items-center justify-center px-4 pb-16 pt-4 sm:pt-0">
+    <main className="flex-1 flex items-start sm:items-center justify-center px-4 pb-36 pt-4 sm:pb-16 sm:pt-0">
       <div className="w-full max-w-sm animate-enter">
         <div className="flex flex-col items-center text-center mb-8">
           <LogoMark className="w-9 h-9 text-fg mb-5" />
@@ -26,5 +27,6 @@ export const AuthShell = ({ title, subtitle, children, footer }: AuthShellProps)
         <p className="text-center text-muted mt-6 text-sm">{footer}</p>
       </div>
     </main>
+    <StorageNotice />
   </div>
 );

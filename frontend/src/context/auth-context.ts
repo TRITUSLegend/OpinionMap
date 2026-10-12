@@ -12,6 +12,8 @@ export interface AuthContextType {
   token: string | null;
   login: (token: string, user: User) => void;
   logout: () => void;
+  /** Drop the session without navigating (e.g. before a new login attempt). */
+  clearSession: () => void;
   isAuthenticated: boolean;
 }
 

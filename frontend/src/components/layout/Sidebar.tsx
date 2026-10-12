@@ -14,9 +14,9 @@ export const Sidebar = ({ isOpen, setIsOpen }: SidebarProps) => {
     { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
     { to: '/workflows', icon: Workflow, label: 'Workflows' },
     { to: '/reports', icon: FileText, label: 'Reports' },
-    { to: '/users', icon: Users, label: 'Users' },
+    { to: '/users', icon: Users, label: 'Users', adminOnly: true },
     { to: '/settings', icon: Settings, label: 'Settings' },
-  ];
+  ].filter((link) => !link.adminOnly || user?.role === 'admin');
 
   return (
     <>

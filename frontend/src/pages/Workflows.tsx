@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Plus, Play, CheckCircle, XCircle, Clock, Trash2 } from 'lucide-react';
 import { fetchWorkflows, deleteWorkflow } from '../api/client';
 import { NewWorkflowModal } from '../components/workflows/NewWorkflowModal';
+import { SkeletonRows } from '../components/ui/SkeletonRows';
 
 interface WorkflowItem {
   id: string;
@@ -76,8 +77,9 @@ export const Workflows = () => {
       </div>
 
       <div className="card overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm min-w-[800px]">
+        {/* Bounded scroll area so the column headers can stay pinned. */}
+        <div className="overflow-auto max-h-[min(70vh,720px)]">
+          <table className="table-sticky w-full text-left text-sm min-w-[800px]">
             <thead className="bg-surface-2 border-b border-border">
               <tr>
                 <th scope="col" className="caption px-4 py-3">Query</th>
@@ -87,9 +89,9 @@ export const Workflows = () => {
                 <th scope="col" className="px-4 py-3"><span className="sr-only">Actions</span></th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-border">
+            <tbody className="divide-y divide-border" aria-busy={loading}>
               {loading ? (
-                <tr><td colSpan={5} className="p-8 text-center text-muted">Loading workflows...</td></tr>
+                <SkeletonRows columns={5} />
               ) : workflows.length === 0 ? (
                 <tr><td colSpan={5} className="p-8 text-center text-muted">No workflows found. Start a new research task!</td></tr>
               ) : (

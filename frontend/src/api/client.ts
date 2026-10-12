@@ -1,4 +1,14 @@
 import axios from 'axios';
+import type { User } from '../context/auth-context';
+
+// The backend's free hosting tier sleeps when idle, and the first request after
+// that has been measured at over 90 s. Login and signup are usually that first
+// request, so they get a longer timeout than everything else.
+export const AUTH_TIMEOUT_MS = 90_000;
+
+// These forms show their own "Invalid email or password"; the global 401
+// redirect below would reload the page and wipe that message.
+const AUTH_FORM_PATHS = ['/auth/login', '/auth/admin-login', '/auth/register'];
 
 export const apiClient = axios.create({
   baseURL: import.meta.env.VITE_API_URL || '/api',
@@ -23,14 +33,43 @@ apiClient.interceptors.request.use((config) => {
 apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response && error.response.status === 401) {
+    const url: string = error.config?.url ?? '';
+    if (error.response && error.response.status === 401 && !AUTH_FORM_PATHS.includes(url)) {
       localStorage.removeItem('token');
       localStorage.removeItem('user');
-      window.location.href = '/login';
+      if (!['/login', '/signup'].includes(window.location.pathname)) {
+        window.location.href = '/login?session=expired';
+      }
     }
     return Promise.reject(error);
   }
 );
+
+export interface TokenResponse {
+  access_token: string;
+  token_type: string;
+  user: User;
+}
+
+// Never start a session from a response that doesn't contain one.
+const assertTokenResponse = (data: unknown): TokenResponse => {
+  const body = data as Partial<TokenResponse> | null;
+  if (!body || typeof body.access_token !== 'string' || !body.access_token || typeof body.user?.id !== 'string') {
+    throw new Error('Unexpected response from the server.');
+  }
+  return body as TokenResponse;
+};
+
+/** The signed-in user's own profile; used to confirm a stored session is still valid. */
+export const fetchMe = async (): Promise<User> => {
+  const { data } = await apiClient.get('/auth/me');
+  return data;
+};
+
+/** Fire-and-forget request that starts waking a sleeping backend before the user submits. */
+export const wakeServer = () => {
+  apiClient.get('/monitoring/health', { timeout: AUTH_TIMEOUT_MS }).catch(() => undefined);
+};
 
 export const fetchOverview = async (workflowId?: string) => {
   const params = workflowId ? { workflow_id: workflowId } : {};
@@ -77,16 +116,18 @@ export const deleteWorkflow = async (id: string) => {
 
 export const login = async (data: URLSearchParams) => {
   const res = await apiClient.post('/auth/login', data, {
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    timeout: AUTH_TIMEOUT_MS,
   });
-  return res.data;
+  return assertTokenResponse(res.data);
 };
 
 export const adminLogin = async (data: URLSearchParams) => {
   const res = await apiClient.post('/auth/admin-login', data, {
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    timeout: AUTH_TIMEOUT_MS,
   });
-  return res.data;
+  return assertTokenResponse(res.data);
 };
 
 export const deleteReport = async (id: string) => {
@@ -100,8 +141,9 @@ interface RegisterPayload {
   full_name: string;
 }
 
-export const register = async (data: RegisterPayload) => {
-  const res = await apiClient.post('/auth/register', data);
+// Returns the created user, not a session; callers sign in afterwards.
+export const register = async (data: RegisterPayload): Promise<User> => {
+  const res = await apiClient.post('/auth/register', data, { timeout: AUTH_TIMEOUT_MS });
   return res.data;
 };
 

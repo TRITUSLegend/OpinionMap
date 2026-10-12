@@ -373,7 +373,7 @@ export const Dashboard = () => {
                 {sentimentData.map((entry) => (
                   <li key={entry.label} className="flex items-center gap-2 text-sm">
                     <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: sentimentColor(colors, entry.label) }} aria-hidden="true"></span>
-                    <span className="text-muted capitalize">{entry.label}</span>
+                    <span className="text-muted capitalize">{entry.label?.toLowerCase()}</span>
                     {typeof entry.percentage === 'number' && (
                       <span className="text-fg font-medium tabular-nums">{Math.round(entry.percentage)}%</span>
                     )}

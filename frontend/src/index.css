@@ -207,6 +207,12 @@
     opacity: 0.55;
   }
 
+  /* A button that is busy (submitting) stays at full strength. */
+  .btn[aria-busy='true']:disabled {
+    opacity: 1;
+    cursor: progress;
+  }
+
   .btn-primary {
     background-color: var(--accent);
     color: var(--accent-fg);
@@ -321,6 +327,29 @@
     box-shadow: inset 0 -1px 0 var(--border);
   }
 
+  /* Floating controls that fade/slide in and out. visibility flips only after
+     the fade-out, and hidden controls leave the tab order. */
+  .floating-shown {
+    opacity: 1;
+    transform: none;
+    visibility: visible;
+    transition:
+      opacity var(--dur) var(--ease),
+      transform var(--dur) var(--ease),
+      background-color var(--dur-fast) var(--ease);
+  }
+
+  .floating-hidden {
+    opacity: 0;
+    transform: translate3d(0, 8px, 0);
+    visibility: hidden;
+    pointer-events: none;
+    transition:
+      opacity var(--dur) var(--ease),
+      transform var(--dur) var(--ease),
+      visibility 0s linear var(--dur);
+  }
+
   .skeleton {
     position: relative;
     overflow: hidden;
@@ -339,6 +368,10 @@
 }
 
 /* ── Motion: transform and opacity only ─────────────────────── */
+
+/* Enter animations fill `backwards` only: a transform animation that keeps
+   filling after it ends turns the element into the containing block for any
+   position:fixed descendant, which would trap a modal inside the page. */
 
 @keyframes enter-up {
   from {
@@ -401,35 +434,35 @@
 }
 
 .animate-enter {
-  animation: enter-up var(--dur-slow) var(--ease) both;
+  animation: enter-up var(--dur-slow) var(--ease) backwards;
 }
 
 .animate-pop-in {
-  animation: pop-in var(--dur) var(--ease) both;
+  animation: pop-in var(--dur) var(--ease) backwards;
 }
 
 .animate-fade-in {
-  animation: fade-in var(--dur) var(--ease) both;
+  animation: fade-in var(--dur) var(--ease) backwards;
 }
 
 .animate-fade-out {
-  animation: fade-out var(--dur-fast) var(--ease) both;
+  animation: fade-out var(--dur-fast) var(--ease) forwards;
 }
 
 .animate-sheet-in {
-  animation: sheet-in var(--dur-slow) var(--ease) both;
+  animation: sheet-in var(--dur-slow) var(--ease) backwards;
 }
 
 .animate-sheet-out {
-  animation: sheet-out var(--dur-fast) var(--ease) both;
+  animation: sheet-out var(--dur-fast) var(--ease) forwards;
 }
 
 .animate-slide-in-right {
-  animation: slide-in-right var(--dur-slow) var(--ease) both;
+  animation: slide-in-right var(--dur-slow) var(--ease) backwards;
 }
 
 .animate-slide-in-up {
-  animation: slide-in-up var(--dur-slow) var(--ease) both;
+  animation: slide-in-up var(--dur-slow) var(--ease) backwards;
 }
 
 /* Theme switch: a short colour fade on surfaces only. ThemeProvider adds this

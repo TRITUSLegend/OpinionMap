@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Bell, Search, Menu, X, CheckCircle, AlertCircle, Clock, FileText, Zap } from 'lucide-react';
 import { fetchRecentActivity } from '../../api/client';
 import { ThemeToggle } from '../ui/ThemeToggle';
+import { useScrollSelector } from '../../hooks/useWindowScroll';
 
 interface HeaderProps {
   toggleSidebar: () => void;
@@ -36,6 +37,8 @@ export const Header = ({ toggleSidebar }: HeaderProps) => {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
+  // The header is sticky against the window; its edge only appears once content scrolls under it.
+  const scrolled = useScrollSelector((s) => s.y > 0);
 
   // Close panel when clicking outside
   useEffect(() => {
@@ -106,7 +109,11 @@ export const Header = ({ toggleSidebar }: HeaderProps) => {
   };
 
   return (
-    <header className="h-16 bg-canvas border-b border-border flex items-center justify-between gap-3 px-4 md:px-8 sticky top-0 z-30">
+    <header
+      className={`h-16 bg-canvas border-b flex items-center justify-between gap-3 px-4 md:px-8 sticky top-0 z-30 transition-[border-color,box-shadow] duration-[180ms] ${
+        scrolled ? 'border-border shadow-[0_6px_16px_-12px_rgb(0_0_0/0.25)]' : 'border-transparent'
+      }`}
+    >
       <div className="flex items-center gap-2 min-w-0">
         <button
           onClick={toggleSidebar}
