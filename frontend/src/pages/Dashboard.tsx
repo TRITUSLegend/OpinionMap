@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Workflow, FileText, Activity, PieChart, ChevronDown, Check, ChartScatter } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart as RechartsPie, Pie, Cell } from 'recharts';
 import { MetricCard } from '../components/dashboard/MetricCard';
+import { AnimatedNumber } from '../components/dashboard/AnimatedNumber';
 import { fetchOverview, fetchSentiment, fetchTrends, fetchWorkflows } from '../api/client';
 import { useChartColors, type ChartColors } from '../context/theme-context';
 
@@ -48,6 +49,10 @@ const sentimentColor = (colors: ChartColors, label: string | undefined) => {
   const key = label?.toLowerCase();
   return key === 'positive' || key === 'negative' ? colors[key] : colors.neutral;
 };
+
+// Stable formatters for AnimatedNumber (a new function each render would restart the count).
+const formatCount = (n: number) => Math.round(n).toLocaleString();
+const formatPercent = (n: number) => `${n.toFixed(1)}%`;
 
 const tooltipStyle = {
   backgroundColor: 'var(--surface)',
@@ -266,22 +271,22 @@ export const Dashboard = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
             <MetricCard
               title="Data Points Scraped"
-              value={metrics?.total_data_points || 0}
+              value={<AnimatedNumber value={metrics?.total_data_points || 0} format={formatCount} />}
               icon={<Activity className="w-4 h-4" />}
             />
             <MetricCard
               title="Reports Generated"
-              value={metrics?.total_reports || 0}
+              value={<AnimatedNumber value={metrics?.total_reports || 0} format={formatCount} />}
               icon={<FileText className="w-4 h-4" />}
             />
             <MetricCard
               title="Avg Sentiment Score"
-              value={`${((metrics?.avg_sentiment_score || 0) * 100).toFixed(1)}%`}
+              value={<AnimatedNumber value={(metrics?.avg_sentiment_score || 0) * 100} format={formatPercent} />}
               icon={<PieChart className="w-4 h-4" />}
             />
             <MetricCard
               title="Total Workflows"
-              value={metrics?.total_workflows || 0}
+              value={<AnimatedNumber value={metrics?.total_workflows || 0} format={formatCount} />}
               icon={<Workflow className="w-4 h-4" />}
             />
           </div>
