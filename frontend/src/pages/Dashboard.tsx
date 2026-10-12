@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
-import { Workflow, FileText, Activity, PieChart, ChevronDown, Check } from 'lucide-react';
+import { Workflow, FileText, Activity, PieChart, ChevronDown, Check, ChartScatter } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart as RechartsPie, Pie, Cell } from 'recharts';
 import { MetricCard } from '../components/dashboard/MetricCard';
 import { fetchOverview, fetchSentiment, fetchTrends, fetchWorkflows } from '../api/client';
+import { useChartColors, type ChartColors } from '../context/theme-context';
 
 interface WorkflowSummary {
   id: string;
@@ -35,10 +36,26 @@ interface TrendPoint {
   neutral: number;
 }
 
-const SENTIMENT_COLORS: { [key: string]: string } = {
-  'positive': '#76b900',
-  'negative': '#ef4444',
-  'neutral':  '#525252',
+const SENTIMENT_SERIES = [
+  { key: 'positive', label: 'Positive' },
+  { key: 'neutral', label: 'Neutral' },
+  { key: 'negative', label: 'Negative' },
+] as const;
+
+// Sentiment colours are design tokens (see index.css): a diverging pair with a
+// grey midpoint, reserved for data.
+const sentimentColor = (colors: ChartColors, label: string | undefined) => {
+  const key = label?.toLowerCase();
+  return key === 'positive' || key === 'negative' ? colors[key] : colors.neutral;
+};
+
+const tooltipStyle = {
+  backgroundColor: 'var(--surface)',
+  border: '1px solid var(--border)',
+  borderRadius: '6px',
+  color: 'var(--fg)',
+  fontSize: '12px',
+  boxShadow: '0 8px 24px -12px rgb(0 0 0 / 0.25)',
 };
 
 export const Dashboard = () => {
@@ -51,6 +68,7 @@ export const Dashboard = () => {
   const [trendData, setTrendData] = useState<TrendPoint[]>([]);
   const [loading, setLoading] = useState(true);
   const [chartLoading, setChartLoading] = useState(false);
+  const colors = useChartColors();
 
   // Tracks which workflow id the charts currently hold data for, so the
   // selection effect below does not re-request what the mount effect just loaded.
@@ -148,57 +166,72 @@ export const Dashboard = () => {
 
   if (loading) {
     return (
-      <div className="h-full flex items-center justify-center">
-        <div className="flex items-center gap-3 text-electric-blue">
-          <div className="w-4 h-4 rounded-full bg-blue-500 animate-ping"></div>
-          <span className="text-xl font-medium">Loading AI Insights...</span>
+      <div className="space-y-8" role="status" aria-label="Loading dashboard">
+        <div className="space-y-2">
+          <div className="skeleton h-8 w-72 max-w-full" />
+          <div className="skeleton h-4 w-56 max-w-full" />
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+          {[0, 1, 2, 3].map((i) => <div key={i} className="skeleton h-[118px] rounded-lg" />)}
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
+          <div className="skeleton h-[420px] rounded-lg lg:col-span-2" />
+          <div className="skeleton h-[420px] rounded-lg" />
         </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-8 animate-fade-in" onClick={() => dropdownOpen && setDropdownOpen(false)}>
+    <div className="space-y-8" onClick={() => dropdownOpen && setDropdownOpen(false)}>
 
       {/* Header */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-white">Market Intelligence Overview</h1>
-          <p className="text-gray-400 mt-1 text-sm md:text-base">
+      <div className="flex flex-col sm:flex-row items-start sm:items-end justify-between gap-4">
+        <div className="min-w-0">
+          <h1 className="page-title">Market Intelligence Overview</h1>
+          <p className="text-muted mt-1 text-sm">
             {selectedWorkflow
-              ? <>Showing results for: <span className="text-white font-medium">"{selectedWorkflow.query}"</span></>
+              ? <>Showing results for <span className="text-fg font-medium">“{selectedWorkflow.query}”</span></>
               : 'Select a workflow to see its analysis'}
           </p>
         </div>
 
-        <div className="flex items-center gap-3 w-full sm:w-auto">
+        <div className="flex items-center gap-2 w-full sm:w-auto">
           {/* Workflow Selector Dropdown */}
           {workflows.length > 0 && (
             <div className="relative w-full sm:w-72" onClick={e => e.stopPropagation()}>
               <button
                 onClick={() => setDropdownOpen(o => !o)}
-                className="w-full glass-button px-4 py-2 rounded-xl font-medium text-white shadow-lg flex items-center justify-between gap-2 text-sm"
+                className="btn btn-secondary w-full justify-between"
+                aria-haspopup="listbox"
+                aria-expanded={dropdownOpen}
               >
                 <span className="truncate">
-                  {selectedWorkflow ? `🔍 ${selectedWorkflow.query}` : 'All Workflows'}
+                  {selectedWorkflow ? selectedWorkflow.query : 'All Workflows'}
                 </span>
-                <ChevronDown className={`w-4 h-4 shrink-0 transition-transform ${dropdownOpen ? 'rotate-180' : ''}`} />
+                <ChevronDown className={`w-4 h-4 shrink-0 text-subtle transition-transform duration-[180ms] ${dropdownOpen ? 'rotate-180' : ''}`} aria-hidden="true" />
               </button>
 
               {dropdownOpen && (
-                <div className="absolute right-0 mt-2 w-full bg-[#0d1424] border border-white/10 rounded-xl shadow-2xl z-50 overflow-hidden">
+                <div
+                  className="absolute right-0 mt-1.5 w-full max-h-80 overflow-y-auto bg-surface border border-border rounded-lg shadow-[0_12px_32px_-16px_rgb(0_0_0/0.3)] z-40 py-1 animate-pop-in origin-top"
+                  role="listbox"
+                  aria-label="Workflow"
+                >
                   {workflows.map(wf => (
                     <button
                       key={wf.id}
+                      role="option"
+                      aria-selected={wf.id === selectedWorkflowId}
                       onClick={() => { setSelectedWorkflowId(wf.id); setDropdownOpen(false); }}
-                      className="w-full px-4 py-3 text-left text-sm hover:bg-white/5 flex items-center justify-between gap-2 transition-colors"
+                      className="w-full px-3 py-2.5 text-left text-sm hover:bg-surface-2 flex items-center justify-between gap-2 transition-colors duration-[120ms] focus-visible:-outline-offset-2"
                     >
                       <div className="min-w-0">
-                        <p className="font-medium text-white truncate">"{wf.query}"</p>
-                        <p className="text-xs text-gray-500 mt-0.5">{new Date(wf.created_at).toLocaleDateString()}</p>
+                        <p className="font-medium text-fg truncate">{wf.query}</p>
+                        <p className="text-xs text-subtle mt-0.5 tabular-nums">{new Date(wf.created_at).toLocaleDateString()}</p>
                       </div>
                       {wf.id === selectedWorkflowId && (
-                        <Check className="w-4 h-4 text-emerald-400 shrink-0" />
+                        <Check className="w-4 h-4 text-fg shrink-0" aria-hidden="true" />
                       )}
                     </button>
                   ))}
@@ -207,8 +240,8 @@ export const Dashboard = () => {
             </div>
           )}
 
-          <button className="glass-button px-4 py-2 text-sm rounded-xl font-medium text-white shadow-lg flex items-center gap-2 shrink-0">
-            <Activity className="w-4 h-4" />
+          <button className="btn btn-secondary shrink-0">
+            <Activity className="w-4 h-4" aria-hidden="true" />
             <span className="hidden md:inline">Live</span>
           </button>
         </div>
@@ -216,101 +249,102 @@ export const Dashboard = () => {
 
       {/* No workflows state */}
       {workflows.length === 0 && (
-        <div className="glass-card rounded-2xl p-12 text-center">
-          <div className="text-5xl mb-4">🚀</div>
-          <h3 className="text-xl font-bold mb-2">No completed workflows yet</h3>
-          <p className="text-gray-400">Create a new research workflow to start seeing analytics here.</p>
+        <div className="card p-12 text-center">
+          <ChartScatter className="w-8 h-8 mx-auto mb-4 text-subtle" aria-hidden="true" />
+          <h3 className="text-lg font-semibold mb-1">No completed workflows yet</h3>
+          <p className="text-muted text-sm">Create a new research workflow to start seeing analytics here.</p>
         </div>
       )}
 
       {workflows.length > 0 && (
-        <>
-          {/* Chart loading overlay */}
+        <div className={`space-y-8 transition-opacity duration-[180ms] ${chartLoading ? 'opacity-60' : ''}`} aria-busy={chartLoading}>
           {chartLoading && (
-            <div className="flex items-center gap-2 text-sm text-gray-400">
-              <div className="w-3 h-3 rounded-full bg-blue-500 animate-ping"></div>
-              Loading data for selected workflow…
-            </div>
+            <p className="sr-only" role="status">Loading data for selected workflow</p>
           )}
 
           {/* Metrics Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
             <MetricCard
               title="Data Points Scraped"
               value={metrics?.total_data_points || 0}
-              icon={<Activity className="w-6 h-6" />}
+              icon={<Activity className="w-4 h-4" />}
             />
             <MetricCard
               title="Reports Generated"
               value={metrics?.total_reports || 0}
-              icon={<FileText className="w-6 h-6" />}
+              icon={<FileText className="w-4 h-4" />}
             />
             <MetricCard
               title="Avg Sentiment Score"
               value={`${((metrics?.avg_sentiment_score || 0) * 100).toFixed(1)}%`}
-              icon={<PieChart className="w-6 h-6" />}
+              icon={<PieChart className="w-4 h-4" />}
             />
             <MetricCard
               title="Total Workflows"
               value={metrics?.total_workflows || 0}
-              icon={<Workflow className="w-6 h-6" />}
+              icon={<Workflow className="w-4 h-4" />}
             />
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
             {/* Sentiment by Source Chart */}
-            <div className="glass-card p-6 lg:col-span-2">
-              <h2 className="text-xl font-semibold text-white mb-1 tracking-tight">Sentiment by Source</h2>
-              <p className="text-xs text-gray-500 mb-6">
-                {selectedWorkflow ? `For: "${selectedWorkflow.query}"` : 'All workflows combined'}
-              </p>
+            <section className="card p-5 md:p-6 lg:col-span-2 min-w-0" aria-labelledby="trend-heading">
+              <div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-3 mb-5">
+                <div className="min-w-0">
+                  <h2 id="trend-heading" className="text-base font-semibold text-fg">Sentiment by Source</h2>
+                  <p className="text-xs text-subtle mt-0.5 truncate">
+                    {selectedWorkflow ? `For “${selectedWorkflow.query}”` : 'All workflows combined'}
+                  </p>
+                </div>
+                {!noData && <SentimentLegend colors={colors} />}
+              </div>
               <div className="h-80 min-w-0">
                 {noData ? (
-                  <div className="h-full flex items-center justify-center text-gray-500 text-sm">
+                  <div className="h-full flex items-center justify-center text-muted text-sm">
                     No scraped data available for this workflow yet.
                   </div>
                 ) : (
                   <ResponsiveContainer width="99%" height="100%">
-                    <AreaChart data={trendData}>
-                      <defs>
-                        <linearGradient id="colorPositive" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="#76b900" stopOpacity={0.3}/>
-                          <stop offset="95%" stopColor="#76b900" stopOpacity={0}/>
-                        </linearGradient>
-                        <linearGradient id="colorNegative" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="#ef4444" stopOpacity={0.3}/>
-                          <stop offset="95%" stopColor="#ef4444" stopOpacity={0}/>
-                        </linearGradient>
-                        <linearGradient id="colorNeutral" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="#525252" stopOpacity={0.3}/>
-                          <stop offset="95%" stopColor="#525252" stopOpacity={0}/>
-                        </linearGradient>
-                      </defs>
-                      <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
-                      <XAxis dataKey="date" stroke="#525252" axisLine={false} tickLine={false} />
-                      <YAxis stroke="#525252" axisLine={false} tickLine={false} />
+                    <AreaChart data={trendData} margin={{ top: 4, right: 8, bottom: 0, left: -16 }}>
+                      <CartesianGrid stroke={colors.grid} vertical={false} />
+                      <XAxis dataKey="date" stroke={colors.axis} tick={{ fill: colors.tick, fontSize: 12 }} tickLine={false} tickMargin={8} />
+                      <YAxis tick={{ fill: colors.tick, fontSize: 12 }} axisLine={false} tickLine={false} allowDecimals={false} />
                       <Tooltip
-                        contentStyle={{ backgroundColor: '#0a0a0a', borderColor: 'rgba(255,255,255,0.1)', borderRadius: '8px', color: '#fff' }}
-                        itemStyle={{ color: '#fff' }}
+                        contentStyle={tooltipStyle}
+                        labelStyle={{ color: 'var(--muted)', marginBottom: 4 }}
+                        itemStyle={{ color: 'var(--fg)', padding: 0 }}
+                        cursor={{ stroke: colors.axis, strokeWidth: 1 }}
                       />
-                      <Area type="monotone" dataKey="positive" stroke="#76b900" fillOpacity={1} fill="url(#colorPositive)" strokeWidth={2} />
-                      <Area type="monotone" dataKey="negative" stroke="#ef4444" fillOpacity={1} fill="url(#colorNegative)" strokeWidth={2} />
-                      <Area type="monotone" dataKey="neutral"  stroke="#525252" fillOpacity={1} fill="url(#colorNeutral)"  strokeWidth={2} />
+                      {SENTIMENT_SERIES.map(({ key, label }) => (
+                        <Area
+                          key={key}
+                          type="monotone"
+                          dataKey={key}
+                          name={label}
+                          stroke={colors[key]}
+                          strokeWidth={2}
+                          fill={colors[key]}
+                          fillOpacity={0.08}
+                          dot={false}
+                          activeDot={{ r: 4, stroke: colors.surface, strokeWidth: 2 }}
+                          isAnimationActive={false}
+                        />
+                      ))}
                     </AreaChart>
                   </ResponsiveContainer>
                 )}
               </div>
-            </div>
+            </section>
 
             {/* Overall Sentiment Pie */}
-            <div className="glass-card p-6 rounded-2xl">
-              <h2 className="text-xl font-bold mb-1">Overall Sentiment</h2>
-              <p className="text-xs text-gray-500 mb-6">
-                {selectedWorkflow ? `For: "${selectedWorkflow.query}"` : 'All workflows combined'}
+            <section className="card p-5 md:p-6 min-w-0" aria-labelledby="overall-heading">
+              <h2 id="overall-heading" className="text-base font-semibold text-fg">Overall Sentiment</h2>
+              <p className="text-xs text-subtle mt-0.5 mb-5 truncate">
+                {selectedWorkflow ? `For “${selectedWorkflow.query}”` : 'All workflows combined'}
               </p>
               <div className="h-64 min-w-0">
                 {noData ? (
-                  <div className="h-full flex items-center justify-center text-gray-500 text-sm">
+                  <div className="h-full flex items-center justify-center text-muted text-sm">
                     No data yet.
                   </div>
                 ) : (
@@ -320,33 +354,47 @@ export const Dashboard = () => {
                         data={sentimentData}
                         innerRadius={60}
                         outerRadius={80}
-                        paddingAngle={5}
                         dataKey="count"
                         nameKey="label"
+                        stroke={colors.surface}
+                        strokeWidth={2}
+                        isAnimationActive={false}
                       >
                         {sentimentData.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={SENTIMENT_COLORS[entry.label?.toLowerCase()] || '#6b7280'} />
+                          <Cell key={`cell-${index}`} fill={sentimentColor(colors, entry.label)} />
                         ))}
                       </Pie>
-                      <Tooltip
-                        contentStyle={{ backgroundColor: '#0a0a0a', borderColor: 'rgba(255,255,255,0.1)', borderRadius: '8px', color: '#fff' }}
-                      />
+                      <Tooltip contentStyle={tooltipStyle} itemStyle={{ color: 'var(--fg)', padding: 0 }} />
                     </RechartsPie>
                   </ResponsiveContainer>
                 )}
               </div>
-              <div className="flex justify-center gap-4 mt-4">
+              <ul className="flex flex-wrap justify-center gap-x-5 gap-y-2 mt-4">
                 {sentimentData.map((entry) => (
-                  <div key={entry.label} className="flex items-center gap-2">
-                    <div className="w-3 h-3 rounded-full" style={{ backgroundColor: SENTIMENT_COLORS[entry.label?.toLowerCase()] || '#6b7280' }}></div>
-                    <span className="text-sm text-gray-400">{entry.label}</span>
-                  </div>
+                  <li key={entry.label} className="flex items-center gap-2 text-sm">
+                    <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: sentimentColor(colors, entry.label) }} aria-hidden="true"></span>
+                    <span className="text-muted capitalize">{entry.label}</span>
+                    {typeof entry.percentage === 'number' && (
+                      <span className="text-fg font-medium tabular-nums">{Math.round(entry.percentage)}%</span>
+                    )}
+                  </li>
                 ))}
-              </div>
-            </div>
+              </ul>
+            </section>
           </div>
-        </>
+        </div>
       )}
     </div>
   );
 };
+
+const SentimentLegend = ({ colors }: { colors: ChartColors }) => (
+  <ul className="flex flex-wrap gap-x-4 gap-y-1">
+    {SENTIMENT_SERIES.map(({ key, label }) => (
+      <li key={key} className="flex items-center gap-1.5 text-xs text-muted">
+        <span className="w-3 h-0.5 rounded-full" style={{ backgroundColor: colors[key] }} aria-hidden="true" />
+        {label}
+      </li>
+    ))}
+  </ul>
+);

@@ -48,70 +48,71 @@ export const Workflows = () => {
     };
   }, []);
 
+  // Status colours are UI-state tokens, always paired with an icon and a label.
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case 'completed': return <CheckCircle className="w-5 h-5 text-emerald-400" />;
-      case 'auto_approved': return <CheckCircle className="w-5 h-5 text-amber-400" />;
-      case 'running': return <Play className="w-5 h-5 text-accent animate-pulse" />;
-      case 'failed': return <XCircle className="w-5 h-5 text-red-400" />;
-      default: return <Clock className="w-5 h-5 text-gray-400" />;
+      case 'completed': return <CheckCircle className="w-4 h-4 text-success" />;
+      case 'auto_approved': return <CheckCircle className="w-4 h-4 text-warning" />;
+      case 'running': return <Play className="w-4 h-4 text-fg animate-pulse" />;
+      case 'failed': return <XCircle className="w-4 h-4 text-danger" />;
+      default: return <Clock className="w-4 h-4 text-subtle" />;
     }
   };
 
   return (
-    <div className="space-y-6 animate-fade-in">
-      <div className="flex items-center justify-between">
+    <div className="space-y-6">
+      <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-white">Workflows</h1>
-          <p className="text-gray-400 mt-1">Manage and track your autonomous research agents</p>
+          <h1 className="page-title">Workflows</h1>
+          <p className="text-muted text-sm mt-1">Manage and track your autonomous research agents</p>
         </div>
-        <button 
+        <button
           onClick={() => setIsModalOpen(true)}
-          className="glass-button px-6 py-2 rounded-xl font-medium text-white shadow-lg flex items-center gap-2"
+          className="btn btn-primary"
         >
-          <Plus className="w-5 h-5" />
+          <Plus className="w-4 h-4" aria-hidden="true" />
           New Research
         </button>
       </div>
 
-      <div className="glass-card rounded-2xl overflow-hidden">
+      <div className="card overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-left min-w-[800px]">
-            <thead className="bg-white/5 border-b border-white/5">
+          <table className="w-full text-left text-sm min-w-[800px]">
+            <thead className="bg-surface-2 border-b border-border">
               <tr>
-                <th className="p-4 font-medium text-gray-400">Query</th>
-                <th className="p-4 font-medium text-gray-400">Sources</th>
-                <th className="p-4 font-medium text-gray-400">Status</th>
-                <th className="p-4 font-medium text-gray-400">Date</th>
-                <th className="p-4"></th>
+                <th scope="col" className="caption px-4 py-3">Query</th>
+                <th scope="col" className="caption px-4 py-3">Sources</th>
+                <th scope="col" className="caption px-4 py-3">Status</th>
+                <th scope="col" className="caption px-4 py-3">Date</th>
+                <th scope="col" className="px-4 py-3"><span className="sr-only">Actions</span></th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-white/5">
+            <tbody className="divide-y divide-border">
               {loading ? (
-                <tr><td colSpan={5} className="p-8 text-center text-gray-400">Loading workflows...</td></tr>
+                <tr><td colSpan={5} className="p-8 text-center text-muted">Loading workflows...</td></tr>
               ) : workflows.length === 0 ? (
-                <tr><td colSpan={5} className="p-8 text-center text-gray-400">No workflows found. Start a new research task!</td></tr>
+                <tr><td colSpan={5} className="p-8 text-center text-muted">No workflows found. Start a new research task!</td></tr>
               ) : (
                 workflows.map((wf) => (
-                  <tr key={wf.id} className="hover:bg-white/5 transition-colors">
-                    <td className="p-4 font-medium">{wf.query}</td>
-                    <td className="p-4">
-                      <div className="flex gap-2 flex-wrap">
+                  <tr key={wf.id} className="hover:bg-surface-2 transition-colors duration-[120ms]">
+                    <td className="px-4 py-3 font-medium text-fg">{wf.query}</td>
+                    <td className="px-4 py-3">
+                      <div className="flex gap-1.5 flex-wrap">
                         {wf.sources.map((s: string) => (
-                          <span key={s} className="px-2 py-1 text-xs rounded-lg bg-white/10 text-gray-300 capitalize">
+                          <span key={s} className="px-2 py-0.5 text-xs rounded-sm bg-surface-2 border border-border text-muted capitalize">
                             {s}
                           </span>
                         ))}
                       </div>
                     </td>
-                    <td className="p-4">
+                    <td className="px-4 py-3">
                       <div className="flex items-center gap-2">
-                        {getStatusIcon(wf.status)}
-                        <span className="capitalize">{wf.status === 'auto_approved' ? 'Auto Approved' : wf.status}</span>
+                        <span aria-hidden="true">{getStatusIcon(wf.status)}</span>
+                        <span className="capitalize text-fg">{wf.status === 'auto_approved' ? 'Auto Approved' : wf.status}</span>
                       </div>
                     </td>
-                    <td className="p-4 text-gray-400 whitespace-nowrap">{new Date(wf.created_at).toLocaleDateString()}</td>
-                    <td className="p-4 text-right">
+                    <td className="px-4 py-3 text-muted whitespace-nowrap tabular-nums">{new Date(wf.created_at).toLocaleDateString()}</td>
+                    <td className="px-4 py-3 text-right">
                       <button
                         onClick={async () => {
                           if(confirm('Are you sure you want to delete this workflow?')) {
@@ -123,8 +124,9 @@ export const Workflows = () => {
                             }
                           }
                         }}
-                        className="p-2 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 transition-colors shrink-0"
+                        className="icon-btn icon-btn-danger w-8 h-8"
                         title="Delete Workflow"
+                        aria-label={`Delete workflow “${wf.query}”`}
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
@@ -138,12 +140,12 @@ export const Workflows = () => {
       </div>
 
       {isModalOpen && (
-        <NewWorkflowModal 
-          onClose={() => setIsModalOpen(false)} 
+        <NewWorkflowModal
+          onClose={() => setIsModalOpen(false)}
           onSuccess={() => {
             setIsModalOpen(false);
             refetchWorkflows();
-          }} 
+          }}
         />
       )}
     </div>

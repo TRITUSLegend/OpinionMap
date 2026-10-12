@@ -249,8 +249,18 @@ An editorial, data-instrument look built for reading opinion data:
 - **Surfaces:** warm paper/charcoal neutrals with hairline borders in place of shadows; small 6–8 px radii.
 - **Type:** a system serif for page titles over a system sans, tabular numerals and small caps-style
   captions. Zero font bytes.
-- **Accent:** one ink-blue accent for actions, links, focus and the active nav item. It replaces the
-  old green, because green now means *positive sentiment*.
-- **Data colours:** positive, neutral and negative are reserved for data (charts, sentiment badges).
-  UI states use separate success, warning and danger tokens.
+- **Data colours:** sentiment is a polarity, so it uses a diverging pair with a grey midpoint:
+  positive blue, neutral grey, negative red. It is reserved for charts and sentiment badges.
+  - Green/red and aqua/red were rejected after running a colour-vision-deficiency validator; they
+    fail or only warn. Blue/grey/red passes all pairs in both themes (worst CVD ΔE 8.7 light /
+    10.6 dark, every mark ≥ 3:1 on its surface).
+  - Values: light `#2a78d6 / #898781 / #e34948`, dark `#3987e5 / #b5b3ab / #e66767`.
+- **Accent:** one ink accent (near-black in light, off-white in dark) for primary buttons, links,
+  focus rings and the active nav item.
+  - It replaces the old green.
+  - Because blue now *means* positive sentiment, a coloured accent would be mistaken for data.
+  - Links are underlined, so they don't rely on colour.
+- **UI states:** success, warning and danger are separate tokens, always paired with an icon or label.
+- **Contrast:** all text tokens are AA (≥ 4.5:1) on their surfaces in both themes, and form-control
+  borders are ≥ 3:1.
 - **Theming:** both themes are two sets of the same CSS variables, and charts read them at runtime.

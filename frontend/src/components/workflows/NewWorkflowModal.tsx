@@ -38,7 +38,7 @@ export const NewWorkflowModal = ({ onClose, onSuccess }: { onClose: () => void, 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitting(true);
-    
+
     const activeSources = Object.entries(sources)
       .filter(([, isActive]) => isActive)
       .map(([key]) => key);
@@ -55,63 +55,64 @@ export const NewWorkflowModal = ({ onClose, onSuccess }: { onClose: () => void, 
   };
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 animate-fade-in">
-      <div className="glass-card w-full max-w-lg rounded-2xl p-6 animate-slide-up relative">
-        <button onClick={onClose} className="absolute top-4 right-4 text-gray-400 hover:text-white">
-          <X className="w-6 h-6" />
+    <div className="fixed inset-0 bg-scrim flex items-center justify-center p-4 z-[70] animate-fade-in">
+      <div className="card w-full max-w-lg p-6 animate-sheet-in relative shadow-[0_24px_48px_-24px_rgb(0_0_0/0.4)]">
+        <button onClick={onClose} className="icon-btn absolute top-3 right-3" aria-label="Close">
+          <X className="w-5 h-5" />
         </button>
-        
-        <h2 className="text-2xl font-bold mb-6">New Research Workflow</h2>
-        
+
+        <h2 className="page-title mb-6 pr-10">New research workflow</h2>
+
         <form onSubmit={handleSubmit} className="space-y-6">
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">
-              Research Query
+            <label htmlFor="workflow-query" className="block text-sm font-medium text-fg mb-1.5">
+              Research query
             </label>
-            <input 
-              type="text" 
+            <input
+              id="workflow-query"
+              type="text"
               required
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="e.g., iPhone 17 battery life user sentiment"
-              className="w-full bg-[#0f0f0f] border border-white/10 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-accent transition-all"
+              className="input"
             />
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">
-              Data Sources
-            </label>
-            <div className="grid grid-cols-2 gap-3">
+          <fieldset>
+            <legend className="block text-sm font-medium text-fg mb-2">
+              Data sources
+            </legend>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2.5">
               {Object.keys(sources).map((source) => (
-                <label key={source} className="flex items-center gap-2 cursor-pointer group">
+                <label key={source} className="flex items-center gap-2.5">
                   <input
                     type="checkbox"
                     checked={sources[source as keyof typeof sources]}
                     onChange={(e) => setSources({ ...sources, [source]: e.target.checked })}
-                    className="rounded border-gray-600 bg-black/20 text-accent focus:ring-accent w-4 h-4 accent-accent"
+                    className="w-4 h-4 accent-accent"
                   />
-                  <div>
-                    <span className="text-sm font-medium">{SOURCE_LABELS[source]}</span>
-                    <span className="text-xs text-gray-500 ml-1">({SOURCE_DESCRIPTIONS[source]})</span>
-                  </div>
+                  <span className="text-sm">
+                    <span className="font-medium text-fg">{SOURCE_LABELS[source]}</span>
+                    <span className="text-xs text-subtle ml-1.5">{SOURCE_DESCRIPTIONS[source]}</span>
+                  </span>
                 </label>
               ))}
             </div>
-          </div>
+          </fieldset>
 
-          <div className="pt-4 flex justify-end gap-3">
-            <button 
-              type="button" 
+          <div className="pt-2 flex justify-end gap-2">
+            <button
+              type="button"
               onClick={onClose}
-              className="px-6 py-2 rounded-xl text-gray-300 hover:text-white hover:bg-white/5 transition-colors"
+              className="btn btn-ghost"
             >
               Cancel
             </button>
-            <button 
-              type="submit" 
+            <button
+              type="submit"
               disabled={submitting || !query}
-              className="glass-button px-6 py-2 rounded-xl font-medium text-white shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+              className="btn btn-primary"
             >
               {submitting ? 'Starting Agents...' : 'Launch Agents'}
             </button>

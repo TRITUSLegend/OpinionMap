@@ -1,6 +1,7 @@
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, Workflow, FileText, Settings, Bot, LogOut, X, Users } from 'lucide-react';
+import { LayoutDashboard, Workflow, FileText, Settings, LogOut, X, Users } from 'lucide-react';
 import { useAuth } from '../../context/auth-context';
+import { Logo } from '../ui/Logo';
 
 interface SidebarProps {
   isOpen: boolean;
@@ -21,60 +22,57 @@ export const Sidebar = ({ isOpen, setIsOpen }: SidebarProps) => {
     <>
       {/* Mobile backdrop overlay */}
       {isOpen && (
-        <div 
-          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 md:hidden"
+        <div
+          className="fixed inset-0 bg-scrim z-40 md:hidden animate-fade-in"
           onClick={() => setIsOpen(false)}
         ></div>
       )}
 
       {/* Sidebar drawer */}
-      <aside className={`w-64 h-screen bg-[#0a0a0a] border-r border-white/5 flex flex-col fixed left-0 top-0 z-50 transform transition-transform duration-300 ease-in-out ${isOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0`}>
-        <div className="p-6 flex items-center justify-between border-b border-white/5">
-          <div className="flex items-center gap-3">
-            <Bot className="text-accent w-8 h-8" />
-            <span className="text-xl font-bold text-white tracking-tight">OpinionMap</span>
-          </div>
-          <button onClick={() => setIsOpen(false)} className="md:hidden text-gray-400 hover:text-white transition-colors">
-            <X className="w-6 h-6" />
+      <aside className={`w-64 h-screen bg-surface border-r border-border flex flex-col fixed left-0 top-0 z-50 transform transition-transform duration-[240ms] ease-[var(--ease)] ${isOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0`}>
+        <div className="h-16 px-5 flex items-center justify-between border-b border-border shrink-0">
+          <Logo />
+          <button onClick={() => setIsOpen(false)} className="icon-btn md:hidden" aria-label="Close navigation">
+            <X className="w-5 h-5" />
           </button>
         </div>
-        
-        <nav className="flex-1 p-4 space-y-1.5 overflow-y-auto custom-scrollbar">
+
+        <nav className="flex-1 p-3 space-y-0.5 overflow-y-auto" aria-label="Main">
           {links.map((link) => (
             <NavLink
               key={link.to}
               to={link.to}
               onClick={() => setIsOpen(false)}
               className={({ isActive }) =>
-                `flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 border-l-2 ${
-                  isActive 
-                    ? 'bg-white/5 text-accent border-accent font-semibold' 
-                    : 'border-transparent text-gray-400 hover:text-white hover:bg-white/5'
+                `relative flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors duration-[120ms] ${
+                  isActive
+                    ? 'bg-surface-2 text-fg font-medium before:absolute before:left-0 before:top-1.5 before:bottom-1.5 before:w-0.5 before:rounded-full before:bg-accent'
+                    : 'text-muted hover:text-fg hover:bg-surface-2'
                 }`
               }
             >
-              <link.icon className="w-5 h-5" />
+              <link.icon className="w-[18px] h-[18px]" aria-hidden="true" />
               <span>{link.label}</span>
             </NavLink>
           ))}
         </nav>
 
-        <div className="p-6 border-t border-white/5 space-y-4 shrink-0">
+        <div className="p-4 border-t border-border space-y-3 shrink-0">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-accent flex items-center justify-center text-black font-bold shrink-0">
+            <div className="w-9 h-9 rounded-full bg-surface-2 border border-border flex items-center justify-center text-fg text-xs font-semibold shrink-0">
               {user?.full_name?.substring(0, 2).toUpperCase() || 'U'}
             </div>
             <div className="min-w-0">
-              <p className="text-sm font-semibold text-white truncate">{user?.full_name || 'User'}</p>
-              <p className="text-xs text-gray-400 truncate">{user?.email || ''}</p>
+              <p className="text-sm font-medium text-fg truncate">{user?.full_name || 'User'}</p>
+              <p className="text-xs text-muted truncate">{user?.email || ''}</p>
             </div>
           </div>
-          <button 
+          <button
             onClick={logout}
-            className="w-full flex items-center justify-center gap-2 py-2 px-4 rounded-lg text-sm font-medium text-gray-400 hover:bg-red-500/10 hover:text-red-400 transition-colors"
+            className="btn btn-ghost w-full"
           >
-            <LogOut className="w-4 h-4" />
-            Logout
+            <LogOut className="w-4 h-4" aria-hidden="true" />
+            Log out
           </button>
         </div>
       </aside>

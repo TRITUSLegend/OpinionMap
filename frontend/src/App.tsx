@@ -9,6 +9,7 @@ import { Users } from './pages/Users';
 import { Settings } from './pages/Settings';
 import { AuthProvider } from './context/AuthContext';
 import { useAuth } from './context/auth-context';
+import { ThemeProvider } from './context/ThemeContext';
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { isAuthenticated } = useAuth();
@@ -20,6 +21,7 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 
 function App() {
   return (
+    <ThemeProvider>
     <BrowserRouter>
       <AuthProvider>
         <Routes>
@@ -36,6 +38,7 @@ function App() {
         </Routes>
       </AuthProvider>
     </BrowserRouter>
+    </ThemeProvider>
   );
 }
 

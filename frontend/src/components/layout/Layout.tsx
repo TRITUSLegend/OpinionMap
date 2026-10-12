@@ -7,7 +7,7 @@ export const Layout = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   return (
-    <div className="min-h-screen bg-black text-white flex">
+    <div className="min-h-screen bg-canvas text-fg flex">
       <Sidebar isOpen={isSidebarOpen} setIsOpen={setIsSidebarOpen} />
       <div className="flex-1 md:ml-64 flex flex-col w-full min-w-0">
         <Header toggleSidebar={() => setIsSidebarOpen(true)} />

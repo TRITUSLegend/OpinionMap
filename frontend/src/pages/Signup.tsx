@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import axios from 'axios';
 import { useNavigate, Link } from 'react-router-dom';
-import { Bot, UserPlus, Loader2 } from 'lucide-react';
+import { UserPlus, Loader2 } from 'lucide-react';
 import { useAuth } from '../context/auth-context';
 import { register as apiRegister } from '../api/client';
+import { AuthShell } from '../components/layout/AuthShell';
 
 export const Signup = () => {
   const [fullName, setFullName] = useState('');
@@ -37,81 +38,71 @@ export const Signup = () => {
   };
 
   return (
-    <div className="min-h-screen bg-black text-white flex items-center justify-center p-4">
-      <div className="glass-card max-w-md w-full p-8 rounded-2xl animate-fade-in relative overflow-hidden">
-        <div className="relative z-10">
-          <div className="flex flex-col items-center mb-8">
-            <div className="w-16 h-16 rounded-2xl bg-accent p-0.5 mb-4">
-              <div className="w-full h-full bg-[#0a0a0a] rounded-xl flex items-center justify-center">
-                <Bot className="w-8 h-8 text-accent" />
-              </div>
-            </div>
-            <h1 className="text-3xl font-bold tracking-tight">Create Workspace</h1>
-            <p className="text-gray-400 mt-2">Start using OpinionMap</p>
-          </div>
-
-          {error && (
-            <div className="bg-red-500/10 border border-red-500/20 text-red-400 p-3 rounded-xl mb-6 text-sm text-center">
-              {error}
-            </div>
-          )}
-
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1">Full Name</label>
-              <input
-                type="text"
-                value={fullName}
-                onChange={(e) => setFullName(e.target.value)}
-                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-accent transition-colors"
-                placeholder="John Doe"
-                required
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1">Email Address</label>
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-accent transition-colors"
-                placeholder="you@company.com"
-                required
-              />
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1">Password</label>
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-accent transition-colors"
-                placeholder="••••••••"
-                required
-                minLength={6}
-              />
-            </div>
-
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full bg-accent hover:bg-accent-hover text-black font-semibold py-3 rounded-xl transition-all flex items-center justify-center gap-2 mt-6"
-            >
-              {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <UserPlus className="w-5 h-5" />}
-              {loading ? 'Creating account...' : 'Create Account'}
-            </button>
-          </form>
-
-          <p className="text-center text-gray-400 mt-6 text-sm">
-            Already have an account?{' '}
-            <Link to="/login" className="text-accent hover:text-white transition-colors font-medium">
-              Sign in
-            </Link>
-          </p>
+    <AuthShell
+      title="Create your workspace"
+      subtitle="Start mapping opinion with OpinionMap"
+      footer={
+        <>
+          Already have an account?{' '}
+          <Link to="/login" className="link">Sign in</Link>
+        </>
+      }
+    >
+      {error && (
+        <div className="border border-danger/40 bg-danger/10 text-fg p-3 rounded-md mb-5 text-sm" role="alert">
+          {error}
         </div>
-      </div>
-    </div>
+      )}
+
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div>
+          <label htmlFor="signup-name" className="block text-sm font-medium text-fg mb-1.5">Full name</label>
+          <input
+            id="signup-name"
+            type="text"
+            value={fullName}
+            onChange={(e) => setFullName(e.target.value)}
+            className="input"
+            placeholder="Jane Doe"
+            required
+          />
+        </div>
+
+        <div>
+          <label htmlFor="signup-email" className="block text-sm font-medium text-fg mb-1.5">Email address</label>
+          <input
+            id="signup-email"
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            className="input"
+            placeholder="you@company.com"
+            required
+          />
+        </div>
+
+        <div>
+          <label htmlFor="signup-password" className="block text-sm font-medium text-fg mb-1.5">Password</label>
+          <input
+            id="signup-password"
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            className="input"
+            required
+            minLength={6}
+          />
+        </div>
+
+        <button
+          type="submit"
+          disabled={loading}
+          className="btn btn-primary w-full min-h-10 mt-2"
+        >
+          {loading ? <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" /> : <UserPlus className="w-4 h-4" aria-hidden="true" />}
+          {loading ? 'Creating account...' : 'Create account'}
+        </button>
+      </form>
+    </AuthShell>
   );
 };

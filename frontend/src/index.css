@@ -1,109 +1,454 @@
 @import 'tailwindcss';
 
-@theme {
-  --color-app-bg: #000000;
-  --color-surface: #0a0a0a;
-  --color-surface-hover: #171717;
-  --color-border: rgba(255, 255, 255, 0.08);
-  --color-accent: #76b900;
-  --color-accent-hover: #88d300;
-  --color-text-primary: #f8fafc;
-  --color-text-secondary: #94a3b8;
+/* Dark mode is class-based. index.html sets `dark` on <html> before first paint
+   (saved choice, else the OS preference) and ThemeProvider keeps it in sync. */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/*
+ * Design tokens. Components use the semantic utilities generated here
+ * (bg-surface, text-muted, border-border, ...), so light and dark are just two
+ * sets of the variables below.
+ *
+ * positive / neutral / negative are reserved for DATA (charts, sentiment). They
+ * form a diverging blue <-> red pair with a grey midpoint, checked for colour-
+ * vision deficiency and 3:1 contrast in both themes. That is why the UI accent is
+ * ink rather than a hue: no button or link can be mistaken for a data colour.
+ * UI states use success / warning / danger instead.
+ */
+@theme inline {
+  --color-canvas: var(--canvas);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-fg: var(--fg);
+  --color-muted: var(--muted);
+  --color-subtle: var(--subtle);
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-fg: var(--accent-fg);
+  --color-ring: var(--ring);
+  --color-positive: var(--positive);
+  --color-neutral: var(--neutral);
+  --color-negative: var(--negative);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-danger: var(--danger);
+}
+
+@theme static {
+  --font-sans: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  /* Overlay behind drawers and dialogs; the same in both themes. */
+  --color-scrim: rgb(0 0 0 / 0.4);
+  --font-serif: 'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia, Cambria, 'Times New Roman', serif;
 }
 
 :root {
+  color-scheme: light;
+
+  --canvas: #f4f3ef;
+  --surface: #fcfcfb;
+  --surface-2: #efeee9;
+  --border: #e1e0d9;
+  --border-strong: #898781; /* form controls: 3.5:1 on surface */
+  --fg: #1a1a19;
+  --muted: #52514e;
+  --subtle: #6b6a64;
+  --accent: #1a1a19;
+  --accent-hover: #3a3936;
+  --accent-fg: #fcfcfb;
+  --ring: #1a1a19;
+
+  --positive: #2a78d6;
+  --neutral: #898781;
+  --negative: #e34948;
+
+  --success: #006300;
+  --warning: #9a6700;
+  --danger: #b42318;
+
+  --chart-grid: #e1e0d9;
+  --chart-axis: #c3c2b7;
+
+  /* Motion: one easing curve, three durations. */
+  --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --dur-fast: 120ms;
+  --dur: 180ms;
+  --dur-slow: 240ms;
+}
+
+:root.dark {
   color-scheme: dark;
+
+  --canvas: #121211;
+  --surface: #1a1a19;
+  --surface-2: #252523;
+  --border: #2c2c2a;
+  --border-strong: #6f6e69;
+  --fg: #f2f1ec;
+  --muted: #c3c2b7;
+  --subtle: #9c9a92;
+  --accent: #f2f1ec;
+  --accent-hover: #d9d8d1;
+  --accent-fg: #1a1a19;
+  --ring: #f2f1ec;
+
+  --positive: #3987e5;
+  --neutral: #b5b3ab;
+  --negative: #e66767;
+
+  --success: #0ca30c;
+  --warning: #fab219;
+  --danger: #f0857f;
+
+  --chart-grid: #2c2c2a;
+  --chart-axis: #383835;
 }
 
-body {
-  background-color: var(--color-app-bg);
-  color: var(--color-text-primary);
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+@layer base {
+  html {
+    background-color: var(--canvas);
+    scrollbar-color: var(--border-strong) transparent;
+  }
+
+  body {
+    background-color: var(--canvas);
+    color: var(--fg);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  ::selection {
+    background-color: color-mix(in oklab, var(--fg) 16%, transparent);
+  }
+
+  /* One visible focus ring for keyboard users, everywhere. */
+  :focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
+
+  /* Tailwind 4 resets buttons to the default cursor. */
+  button:not(:disabled),
+  [role='button']:not([aria-disabled='true']),
+  label:has(input[type='checkbox']:not(:disabled)) {
+    cursor: pointer;
+  }
+
+  :disabled {
+    cursor: not-allowed;
+  }
+
+  input::placeholder {
+    color: var(--subtle);
+    opacity: 1;
+  }
 }
 
-/* Premium Minimalist Surfaces */
-.glass-card {
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
-  border-radius: 0.75rem;
+@layer components {
+  .card {
+    background-color: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+  }
+
+  .page-title {
+    font-family: var(--font-serif);
+    font-size: 1.625rem;
+    line-height: 2rem;
+    font-weight: 400;
+    letter-spacing: -0.01em;
+    color: var(--fg);
+  }
+
+  @media (min-width: 768px) {
+    .page-title {
+      font-size: 1.875rem;
+      line-height: 2.25rem;
+    }
+  }
+
+  /* Small uppercase section caption. */
+  .caption {
+    font-size: 0.6875rem;
+    line-height: 1rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  .btn {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    min-height: 2.25rem;
+    padding: 0 0.875rem;
+    border: 1px solid transparent;
+    border-radius: 6px;
+    font-size: 0.875rem;
+    font-weight: 500;
+    line-height: 1.25rem;
+    white-space: nowrap;
+    transition:
+      background-color var(--dur-fast) var(--ease),
+      border-color var(--dur-fast) var(--ease),
+      color var(--dur-fast) var(--ease),
+      transform var(--dur-fast) var(--ease);
+  }
+
+  .btn:active:not(:disabled) {
+    transform: translateY(1px);
+  }
+
+  .btn:disabled {
+    opacity: 0.55;
+  }
+
+  .btn-primary {
+    background-color: var(--accent);
+    color: var(--accent-fg);
+  }
+
+  .btn-primary:hover:not(:disabled) {
+    background-color: var(--accent-hover);
+  }
+
+  .btn-secondary {
+    background-color: var(--surface);
+    border-color: var(--border);
+    color: var(--fg);
+  }
+
+  .btn-secondary:hover:not(:disabled) {
+    background-color: var(--surface-2);
+    border-color: var(--border-strong);
+  }
+
+  .btn-ghost {
+    color: var(--muted);
+  }
+
+  .btn-ghost:hover:not(:disabled) {
+    background-color: var(--surface-2);
+    color: var(--fg);
+  }
+
+  .icon-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.25rem;
+    height: 2.25rem;
+    flex-shrink: 0;
+    border-radius: 6px;
+    color: var(--muted);
+    transition:
+      background-color var(--dur-fast) var(--ease),
+      color var(--dur-fast) var(--ease),
+      transform var(--dur-fast) var(--ease);
+  }
+
+  .icon-btn:hover:not(:disabled) {
+    background-color: var(--surface-2);
+    color: var(--fg);
+  }
+
+  .icon-btn:active:not(:disabled) {
+    transform: scale(0.94);
+  }
+
+  .icon-btn-danger:hover:not(:disabled) {
+    background-color: color-mix(in oklab, var(--danger) 12%, transparent);
+    color: var(--danger);
+  }
+
+  .input {
+    display: block;
+    width: 100%;
+    min-height: 2.5rem;
+    padding: 0.5rem 0.75rem;
+    background-color: var(--surface);
+    color: var(--fg);
+    border: 1px solid var(--border-strong);
+    border-radius: 6px;
+    /* 16px stops iOS Safari from zooming into the field on focus. */
+    font-size: 1rem;
+    line-height: 1.5rem;
+    transition: border-color var(--dur-fast) var(--ease);
+  }
+
+  @media (min-width: 640px) {
+    .input {
+      font-size: 0.875rem;
+      line-height: 1.25rem;
+    }
+  }
+
+  .input:hover:not(:disabled) {
+    border-color: var(--fg);
+  }
+
+  .input:focus-visible {
+    outline-offset: 1px;
+  }
+
+  .input[aria-invalid='true'] {
+    border-color: var(--danger);
+  }
+
+  .link {
+    color: var(--fg);
+    font-weight: 500;
+    text-decoration: underline;
+    text-decoration-color: var(--border-strong);
+    text-underline-offset: 3px;
+    transition: text-decoration-color var(--dur-fast) var(--ease);
+  }
+
+  .link:hover {
+    text-decoration-color: currentColor;
+  }
+
+  /* Sticky header cells for tables inside a bounded scroll container. */
+  .table-sticky thead th {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    background-color: var(--surface-2);
+    box-shadow: inset 0 -1px 0 var(--border);
+  }
+
+  .skeleton {
+    position: relative;
+    overflow: hidden;
+    background-color: var(--surface-2);
+    border-radius: 4px;
+  }
+
+  .skeleton::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    transform: translateX(-100%);
+    background: linear-gradient(90deg, transparent, color-mix(in oklab, var(--surface) 75%, transparent), transparent);
+    animation: shimmer 1.4s var(--ease) infinite;
+  }
 }
 
-.glass-button {
-  background: var(--color-surface-hover);
-  border: 1px solid var(--color-border);
-  color: var(--color-text-primary);
-  transition: all 0.2s ease;
+/* ── Motion: transform and opacity only ─────────────────────── */
+
+@keyframes enter-up {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 6px, 0);
+  }
 }
 
-.glass-button:hover {
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.15);
+@keyframes pop-in {
+  from {
+    opacity: 0;
+    transform: translate3d(0, -4px, 0) scale(0.98);
+  }
 }
 
-.glass-button-primary {
-  background: var(--color-accent);
-  color: #000000;
-  font-weight: 500;
-  border: none;
-  transition: all 0.2s ease;
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
 }
 
-.glass-button-primary:hover {
-  background: var(--color-accent-hover);
+@keyframes fade-out {
+  to {
+    opacity: 0;
+  }
 }
 
-.gradient-text {
-  background: linear-gradient(to right, #ffffff, #a3a3a3);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+@keyframes sheet-in {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 8px, 0) scale(0.98);
+  }
 }
 
-.text-accent {
-  color: var(--color-accent);
+@keyframes sheet-out {
+  to {
+    opacity: 0;
+    transform: translate3d(0, 8px, 0) scale(0.98);
+  }
 }
 
-/* Animations */
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+@keyframes slide-in-right {
+  from {
+    opacity: 0;
+    transform: translate3d(12px, 0, 0);
+  }
 }
 
-@keyframes slideUp {
-  from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: translateY(0); }
+@keyframes slide-in-up {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 12px, 0);
+  }
 }
 
-@keyframes slideInLeft {
-  from { opacity: 0; transform: translateX(-10px); }
-  to { opacity: 1; transform: translateX(0); }
+@keyframes shimmer {
+  to {
+    transform: translateX(100%);
+  }
 }
 
-/* Removed pulse-glow for a more professional look, keeping subtle fade-ins */
-.animate-fade-in { animation: fadeIn 0.4s ease-out forwards; }
-.animate-slide-up { animation: slideUp 0.4s ease-out forwards; }
-.animate-slide-in-left { animation: slideInLeft 0.4s ease-out forwards; }
+.animate-enter {
+  animation: enter-up var(--dur-slow) var(--ease) both;
+}
 
-/* Staggered animations */
-.delay-100 { animation-delay: 50ms; }
-.delay-200 { animation-delay: 100ms; }
-.delay-300 { animation-delay: 150ms; }
+.animate-pop-in {
+  animation: pop-in var(--dur) var(--ease) both;
+}
 
-/* Custom Scrollbar - Slim and elegant */
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+.animate-fade-in {
+  animation: fade-in var(--dur) var(--ease) both;
 }
-::-webkit-scrollbar-track {
-  background: transparent;
+
+.animate-fade-out {
+  animation: fade-out var(--dur-fast) var(--ease) both;
 }
-::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 3px;
+
+.animate-sheet-in {
+  animation: sheet-in var(--dur-slow) var(--ease) both;
 }
-::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.2);
+
+.animate-sheet-out {
+  animation: sheet-out var(--dur-fast) var(--ease) both;
+}
+
+.animate-slide-in-right {
+  animation: slide-in-right var(--dur-slow) var(--ease) both;
+}
+
+.animate-slide-in-up {
+  animation: slide-in-up var(--dur-slow) var(--ease) both;
+}
+
+/* Theme switch: a short colour fade on surfaces only. ThemeProvider adds this
+   class for the duration of the switch. */
+html.theme-transition :is(body, header, aside, main, .card, .input, .btn, th, td) {
+  transition:
+    background-color var(--dur) var(--ease),
+    border-color var(--dur) var(--ease),
+    color var(--dur) var(--ease) !important;
+}
+
+/* One switch for all non-essential motion. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 1ms !important;
+    scroll-behavior: auto !important;
+  }
 }
