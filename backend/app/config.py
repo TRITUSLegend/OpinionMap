@@ -68,11 +68,36 @@ class Settings(BaseSettings):
     # ChromaDB
     CHROMA_PERSIST_DIR: str = "./chroma_data"
 
-    # ChromaDB connection (set by Docker Compose). Declared so the values
-    # compose injects are recognised rather than ignored; the RAG store
-    # currently uses PersistentClient(CHROMA_PERSIST_DIR), not this host/port.
-    CHROMA_HOST: str = "localhost"
+    # ChromaDB server (Docker Compose sets CHROMA_HOST=chromadb). When the host
+    # is empty, or the server can't be reached at startup, the vector store
+    # uses a local PersistentClient(CHROMA_PERSIST_DIR) instead.
+    CHROMA_HOST: str = ""
     CHROMA_PORT: int = 8000
+
+    # Embeddings (Ask AI and /api/rag). text-embedding-004 was retired; 768
+    # dimensions keeps vectors the size the old model produced.
+    EMBEDDING_MODEL: str = "models/gemini-embedding-001"
+    EMBEDDING_DIM: int = 768
+    # The free tier rejected a 100-text batch with a 429; 50 went through.
+    EMBEDDING_BATCH_SIZE: int = Field(default=50, ge=1, le=100)
+
+    # Ask AI (questions answered from one workflow's collected comments)
+    ASK_AI_TOP_K: int = Field(default=8, ge=1, le=20)
+    # Best cosine similarity a question needs before Gemini is called at all.
+    # On a real 176-item workflow, clearly off-topic questions peaked at 0.594
+    # and covered ones started at 0.625 (docs/ASK_AI_PLAN.md, section 4).
+    ASK_AI_MIN_SIMILARITY: float = Field(default=0.6, ge=0.0, le=1.0)
+    # Caps embedding calls per workflow to protect the free-tier quota.
+    ASK_AI_MAX_CHUNKS: int = Field(default=400, ge=1)
+    # How long a question waits for a missing index to be built before the API
+    # answers 202 "preparing" (the build carries on in the background). The
+    # free tier embeds 100 texts a minute, so a large workflow can take longer.
+    ASK_AI_INDEX_WAIT_SECONDS: float = Field(default=25.0, ge=0.0)
+    # Embed each workflow as soon as its run completes. The free tier embeds
+    # 1,000 texts a day (about 3-6 workflows), so false saves the quota for
+    # workflows someone actually asks about: they're indexed on first question.
+    ASK_AI_INDEX_ON_COMPLETE: bool = True
+    ASK_AI_RATE_LIMIT_PER_MINUTE: int = Field(default=10, ge=1)
 
     # CORS
     CORS_ORIGINS: list[str] = ["http://localhost", "http://localhost:3000", "https://localhost"]

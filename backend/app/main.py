@@ -26,6 +26,7 @@ from app.core.logging import get_logger
 
 from app.api.auth import router as auth_router
 from app.api.workflows import router as workflows_router
+from app.api.ask import router as ask_router
 from app.api.reports import router as reports_router
 from app.api.dashboard import router as dashboard_router
 from app.api.rag import router as rag_router
@@ -79,6 +80,7 @@ app.mount("/metrics", metrics_app)
 
 app.include_router(auth_router, prefix="/api/auth", tags=["auth"])
 app.include_router(workflows_router, prefix="/api/workflows", tags=["workflows"])
+app.include_router(ask_router, prefix="/api/workflows", tags=["ask-ai"])
 app.include_router(reports_router, prefix="/api/reports", tags=["reports"])
 app.include_router(dashboard_router, prefix="/api/dashboard", tags=["dashboard"])
 app.include_router(rag_router, prefix="/api/rag", tags=["rag"])

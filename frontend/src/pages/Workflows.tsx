@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Plus, Play, CheckCircle, XCircle, Clock, Trash2 } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { Plus, Play, CheckCircle, XCircle, Clock, Trash2, MessageSquareText } from 'lucide-react';
 import { fetchWorkflows, deleteWorkflow } from '../api/client';
 import { NewWorkflowModal } from '../components/workflows/NewWorkflowModal';
 import { SkeletonRows } from '../components/ui/SkeletonRows';
@@ -114,7 +115,26 @@ export const Workflows = () => {
                       </div>
                     </td>
                     <td className="px-4 py-3 text-muted whitespace-nowrap tabular-nums">{new Date(wf.created_at).toLocaleDateString()}</td>
-                    <td className="px-4 py-3 text-right">
+                    <td className="px-4 py-3 text-right whitespace-nowrap">
+                      {['completed', 'auto_approved'].includes(wf.status) ? (
+                        <Link to={`/workflows/${wf.id}/ask`} className="btn btn-ghost" aria-label={`Ask AI about “${wf.query}”`}>
+                          <MessageSquareText className="w-4 h-4" aria-hidden="true" />
+                          Ask AI
+                        </Link>
+                      ) : (
+                        // Not a disabled <button>: those drop out of the tab order and show no tooltip.
+                        <span
+                          className="btn btn-ghost opacity-60"
+                          role="link"
+                          aria-disabled="true"
+                          tabIndex={0}
+                          title="Ask AI opens once this run completes"
+                          aria-label={`Ask AI about “${wf.query}”, available once this run completes`}
+                        >
+                          <MessageSquareText className="w-4 h-4" aria-hidden="true" />
+                          Ask AI
+                        </span>
+                      )}
                       <button
                         onClick={async () => {
                           if(confirm('Are you sure you want to delete this workflow?')) {

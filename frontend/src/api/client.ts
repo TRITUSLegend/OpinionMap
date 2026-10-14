@@ -158,3 +158,52 @@ export const downloadPdf = async (id: string) => {
   });
   return response.data;
 };
+
+// ── Ask AI ──────────────────────────────────────────────────
+
+// An answer is one embedding call and one Gemini call, after the workflow's
+// data is prepared, so it gets twice the default timeout.
+export const ASK_TIMEOUT_MS = 60_000;
+
+export interface AskStatus {
+  indexed: boolean;
+  chunk_count: number;
+  chunk_total: number;
+  indexing: boolean;
+  simulated_share: number;
+  item_count: number;
+  workflow_status: string;
+  query: string;
+}
+
+export interface AskCitation {
+  id: number;
+  source: string;
+  text: string;
+  sentiment_label: string | null;
+  simulated: boolean;
+  url?: string | null;
+}
+
+export interface AskAnswer {
+  answer_status: 'answered' | 'partial' | 'not_covered';
+  answer: string;
+  citations: AskCitation[];
+  retrieved_count: number;
+}
+
+export interface AskTurn {
+  role: 'user' | 'assistant';
+  content: string;
+}
+
+export const fetchAskStatus = async (workflowId: string): Promise<AskStatus> => {
+  const { data } = await apiClient.get(`/workflows/${workflowId}/ask/status`);
+  return data;
+};
+
+/** Resolves to null while the workflow's data is still being prepared (HTTP 202). */
+export const askWorkflow = async (workflowId: string, question: string, history: AskTurn[]): Promise<AskAnswer | null> => {
+  const res = await apiClient.post(`/workflows/${workflowId}/ask`, { question, history }, { timeout: ASK_TIMEOUT_MS });
+  return res.status === 202 ? null : res.data;
+};

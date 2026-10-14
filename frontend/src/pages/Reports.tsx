@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
-import { FileText, Download, Trash2 } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { FileText, Download, Trash2, MessageSquareText } from 'lucide-react';
 import { fetchReports, deleteReport } from '../api/client';
 import { useToast } from '../components/ui/toast-context';
 
 interface ReportItem {
   id: string;
+  workflow_id: string;
   title: string;
   executive_summary: string;
   recommendations?: string[];
@@ -62,6 +64,14 @@ export const Reports = () => {
                   </div>
                 </div>
                 <div className="flex gap-1 shrink-0">
+                  <Link
+                    to={`/workflows/${report.workflow_id}/ask`}
+                    className="icon-btn"
+                    title="Ask AI about this report's data"
+                    aria-label="Ask AI about this report's data"
+                  >
+                    <MessageSquareText className="w-4 h-4" />
+                  </Link>
                   <button
                     onClick={async () => {
                       try {
