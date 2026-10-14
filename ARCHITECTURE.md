@@ -13,6 +13,13 @@ The core technical approach is a **stateful agent graph**: every node receives a
 one place (`graph.py`) rather than being scattered across service code. The reviewer node closes a
 conditional loop back to the report node, giving the pipeline a bounded self-correction cycle.
 
+**Ask AI** sits *after* the pipeline, not inside it. When a run completes, its stored comments are
+chunked, embedded with Gemini and written to a per-workflow ChromaDB collection (`wf_<workflow id>`).
+`POST /api/workflows/{id}/ask` retrieves the closest chunks, refuses without calling the LLM when
+nothing is close enough, and otherwise makes one Gemini call whose citations are validated
+server-side. Postgres stays the source of truth: a missing or partial collection is rebuilt from
+`scraped_data` on demand. No tables or columns were added.
+
 ---
 
 ## System Architecture
@@ -28,7 +35,7 @@ compose entry are both gone.)
 | `frontend` | `agentflow-frontend` | React SPA built by Vite, served by its own nginx | internal only, proxied |
 | `backend` | `agentflow-backend` | FastAPI application, the agent pipeline, all business logic | `8000:8000` |
 | `postgres` | `agentflow-postgres` | Primary relational store (postgres:16-alpine) | internal only, `5432` |
-| `chromadb` | `agentflow-chromadb` | Vector store for RAG document retrieval | internal only, `8000` |
+| `chromadb` | `agentflow-chromadb` | Ask AI vector store; the backend connects via `CHROMA_HOST=chromadb` (falls back to its own disk, logged, if unreachable) | internal only, `8000` |
 | `prometheus` | `agentflow-prometheus` | Scrapes `/metrics` from the backend | `9090:9090` |
 | `grafana` | `agentflow-grafana` | Dashboards over Prometheus metrics | `3000:3000` |
 
@@ -57,9 +64,26 @@ Browser POST /api/workflows/
       → reviewer approves, or loops back to report (max 2 revisions)
       → ScrapedData / Analytics / AgentLog / Report rows written
       → Workflow.status set to completed | auto_approved | failed
+      → after that commit, if completed/auto_approved: an asyncio task embeds the run's comments
+        into its Chroma collection (best effort; it never touches the workflow row)
 
 (meanwhile)
    Workflows page polls GET /api/workflows/ every 15s until the status settles
+```
+
+**Ask AI path**
+
+```
+Browser POST /api/workflows/{id}/ask {question, history (last 6 turns)}
+   → per-user rate limit (10/min, 429) → body validation (422)
+   → injection screen + sanitize_query (400) → ownership (404) → status must be completed (409)
+   → load the workflow's ScrapedData, build the chunk plan (Postgres is the source of truth)
+   → ensure the collection matches the plan (shared build task; 202 "preparing" after 25s)
+   → embed question (+ previous user turn) → top-8 by cosine similarity
+   → best similarity < 0.60: "not_covered", no LLM call
+   → one Gemini call (JSON mode, numbered excerpts as delimited data)
+   → validate: drop citations outside the retrieved set; uncited answer → "not_covered"
+   → answer + citations whose text comes from the stored comments
 ```
 
 ### Tech Stack
@@ -71,12 +95,12 @@ Browser POST /api/workflows/
 | Charts | Recharts 3 | Sentiment/trend visualisation | |
 | Routing | react-router-dom 6 | Client-side routes | |
 | HTTP | axios | API client | 30s timeout, JWT interceptor, global 401 handler |
-| API | FastAPI | REST API, DI, OpenAPI schema | 26 documented paths |
+| API | FastAPI | REST API, DI, OpenAPI schema | 29 documented paths, 33 operations |
 | Orchestration | LangGraph | Six-node stateful agent graph | `graph.py` / `state.py` |
-| LLM | Google Gemini `gemini-2.5-flash` | Insight + report generation | via `google-generativeai` (deprecated, see below) |
+| LLM | Google Gemini `gemini-2.5-flash` | Insight + report generation, Ask AI answers | via `google-generativeai` (deprecated, see below) |
 | ORM | SQLAlchemy 2 (async) | Data access | `asyncpg` in Docker, `aiosqlite` locally |
 | DB | PostgreSQL 16 | Primary store | |
-| Vectors | ChromaDB | RAG retrieval | Gemini `text-embedding-004` embeddings |
+| Vectors | ChromaDB | Ask AI retrieval, one cosine collection per workflow | Gemini `gemini-embedding-001` at 768 dims (`text-embedding-004` was retired); HTTP client in Compose, on-disk elsewhere |
 | Auth | python-jose + bcrypt | JWT issue/verify, password hashing | |
 | Scraping | httpx, praw, google-api-python-client | Seven data sources | no per-vendor SDKs beyond these |
 | Reports | reportlab, python-docx | PDF and DOCX export | |
@@ -197,10 +221,14 @@ it is presentation data, not evidence.
 | `Analytics` | `analytics` | `workflow_id`, `metric_type`, `metric_data` | `ix_analytics_workflow_id`, `ix_analytics_workflow_metric` |
 | `AgentLog` | `agent_logs` | `workflow_id`, `user_id`, `agent_name`, `status`, `execution_time_ms` | `ix_agent_logs_workflow_id`, `ix_agent_logs_user_id` |
 | `ScheduledTask` | `scheduled_tasks` | `user_id`, `name`, `query`, `cron_expression`, `is_active` | — |
-| `EmbeddingMetadata` | `embedding_metadata` | RAG vector bookkeeping | — |
+| `EmbeddingMetadata` | `embedding_metadata` | Declared for RAG bookkeeping; unused (Ask AI derives chunk ids from `scraped_data.id`) | — |
 
 `metric_type` values in use: `sentiment_distribution`, `keyword_frequency`, `trend_data`,
 `competitor_score`.
+
+Ask AI added no tables or columns. Its vectors are a cache keyed `wf_<workflow id>` /
+`<scraped_data id>:<n>` and rebuilt from `scraped_data` whenever they are missing; chat history stays
+in the browser (`sessionStorage`) and is sent back with each question.
 
 `Workflow.status` values: `pending`, `running`, `completed`, `auto_approved`, `failed`.
 `auto_approved` means the reviewer hit the 2-revision ceiling and force-approved — the dashboard and
@@ -223,7 +251,8 @@ was pure overhead. See Performance below.
 
 ### Endpoint Map
 
-27 paths. All `/api/*` routes except registration and login require a bearer token.
+29 paths, 33 operations in the OpenAPI schema (plus `/metrics` and `HEAD /`, which are kept out
+of it). All `/api/*` routes except registration and login require a bearer token.
 
 | Method | Path | Auth | Description |
 |---|---|---|---|
@@ -237,7 +266,9 @@ was pure overhead. See Performance below.
 | POST | `/api/workflows/` | user | Create workflow, schedules background pipeline |
 | GET | `/api/workflows/` | user | Paginated workflow list |
 | GET | `/api/workflows/{id}` | user + owner | Single workflow |
-| DELETE | `/api/workflows/{id}` | user + owner | Delete workflow (explicit rollback on failure) |
+| DELETE | `/api/workflows/{id}` | user + owner | Delete workflow (explicit rollback on failure); its Chroma collection is dropped in the background |
+| GET | `/api/workflows/{id}/ask/status` | user + owner | Ask AI index state: `indexed`, `chunk_count`/`chunk_total`, `indexing`, `simulated_share`, `item_count` |
+| POST | `/api/workflows/{id}/ask` | user + owner | Ask AI answer with validated citations; 202 while the index builds, 409 while the run is unfinished, 429 rate limit, 503 on Gemini/quota failure |
 | GET | `/api/reports/` | user | Paginated report list |
 | GET | `/api/reports/{id}` | user + owner | Single report |
 | DELETE | `/api/reports/{id}` | user + owner | Delete report |
@@ -252,8 +283,8 @@ was pure overhead. See Performance below.
 | POST | `/api/schedules/` | user | Create schedule (stored, not executed) |
 | GET | `/api/schedules/` | user | List own schedules |
 | DELETE | `/api/schedules/{id}` | user + owner | Deactivate own schedule |
-| POST | `/api/rag/index` | user | Index documents into ChromaDB |
-| POST | `/api/rag/query` | user | Similarity search |
+| POST | `/api/rag/index` | user + owner | Legacy: starts indexing an owned workflow (was a no-op) |
+| POST | `/api/rag/query` | user + owner | Legacy uncited RAG answer over an owned workflow's collection |
 | GET | `/api/monitoring/health` | user | Health probe |
 | GET | `/api/monitoring/system` | user | psutil system stats |
 | GET | `/api/monitoring/agents` | user | Agent execution stats |
@@ -344,15 +375,35 @@ by any successful XSS. Both are documented as future work below.
 `extract_json()` in the same module defensively parses Gemini responses that arrive wrapped in
 markdown fences or with trailing prose.
 
+### Ask AI
+
+- **Ownership on every route**, the same 404 for missing and foreign workflows. Collection names are
+  built from the server-verified UUID, never from client input. The legacy `/api/rag/query` gained
+  the same check (it had none).
+- **Retrieval-time prompt injection.** Scraped comments are untrusted. They enter the prompt as
+  numbered excerpts inside `<excerpts>` delimiters, with `<`, `>`, `[` and `]` replaced so a comment
+  can't close a delimiter or forge a citation, and the prompt says everything inside is data. The
+  question is screened with `find_injection_pattern()` (the patterns `sanitize_query` uses) and
+  cleaned by `sanitize_query`/`safe_query_for_prompt`. Assistant turns sent back by the client never
+  reach the prompt.
+- **Citations are validated server-side.** Ids outside the retrieved set are dropped, markers to
+  them are removed, and an answer with no valid citation becomes `not_covered`. Citation text is
+  the stored chunk, not model output.
+- **Rate limit:** 10 questions per user per minute, in memory, per process.
+- **Rendering:** the page renders answers and comments as plain text; only `[n]` markers become
+  buttons. No `dangerouslySetInnerHTML`. Source links are shown only for http(s) URLs of
+  non-simulated rows.
+- **Logs** carry stage timings and similarity, never comment text.
+
 ---
 
 ## Known Issues & Future Work
 
 ### High Priority
 
-1. **Thin test suite.** `backend/tests/` covers authentication only. `pytest` and `pytest-asyncio` are already in
-   `requirements.txt` but unused. This is the single largest risk to the project — every change is
-   verified manually.
+1. **Thin test suite.** `backend/tests/` covers authentication and Ask AI only; the pipeline,
+   scrapers and dashboard have no tests. Changes there are still verified manually, which remains
+   the single largest risk to the project.
 2. **No refresh token.** An 8-hour expiry with a hard redirect to `/login` will interrupt a
    demo mid-flow. Either implement refresh tokens or raise the expiry for demo runs.
 3. **Bluesky needs credentials or it silently mocks.** `BLUESKY_IDENTIFIER` and
@@ -381,6 +432,23 @@ markdown fences or with trailing prose.
    `DATABASE_URL` is unset. Convenient locally, but it means local behaviour can diverge from
    production Postgres (type coercion, concurrency). Fine as long as it stays a documented dev-only
    fallback.
+
+### Ask AI limitations
+
+- **Free-tier embedding quota:** 100 texts a minute and 1,000 a day per project. A first build of a
+  ~300-chunk workflow takes 2–3 minutes (the API answers 202 meanwhile), and about 3–6 workflows can
+  be indexed a day. `ASK_AI_INDEX_ON_COMPLETE=false` saves the quota for workflows someone asks about.
+- **Render's disk is ephemeral**, so collections are rebuilt (and re-embedded) after each restart.
+  A persistent disk or a hosted Chroma would avoid the repeat cost.
+- **Top-k is a sample, not a count.** Counting questions rely on the stats block, not the excerpts.
+- **The 0.60 similarity threshold was tuned by hand** on one workflow
+  (`docs/ASK_AI_PLAN.md`, section 4). History is folded into the retrieval query, which helps
+  follow-ups but lets an off-topic follow-up pass the gate; Gemini then answers `not_covered`.
+- **Simulated rows are recognised by template text** (`rag/provenance.py`); a template edited after
+  a run is no longer recognised for that run.
+- **Per-process state:** the rate limit, build tasks and locks live in one process, which is right for
+  a single Render instance but not for several workers.
+- **No streaming**, and chat history is per browser tab only.
 
 ### Low Priority / Nice to Have
 
@@ -411,13 +479,17 @@ Migrating involves:
   the new `config=types.GenerateContentConfig(...)` shape.
 - Re-verifying `extract_json()` still handles the new response objects.
 
-Touch points are narrow: `insight_agent.py`, `report_agent.py`, `rag/embeddings.py`, and the startup
-configure call in `main.py`. Estimated effort **half a day**, most of it re-testing the two LLM nodes
+Touch points are narrow: `insight_agent.py`, `report_agent.py`, `rag/embeddings.py`,
+`services/ask_service.py`, and the startup configure call in `main.py`. Estimated effort **half a day**, most of it re-testing the two LLM nodes
 and their fallback paths. Worth doing before the deprecated package stops receiving security fixes.
 
 ### Specific Future Work: Test Suite
 
-`backend/tests/test_auth.py` covers login, registration and user listing (`cd backend && pytest`).
+`backend/tests/test_auth.py` covers login, registration and user listing, and
+`backend/tests/test_ask_ai.py` covers Ask AI end to end with fake embeddings and a fake Gemini:
+ownership, validation, the injection screen, the rate limit, the not-covered gate, citation
+stripping and downgrading, delimiting of injected comments, rebuild from Postgres, the 202 build
+path, and that an indexing failure leaves a workflow `completed` (`cd backend && pytest`).
 Recommended next, highest value first:
 
 1. **Scraper fallback contract** — for all seven scrapers, assert `_scrape_impl` never raises with

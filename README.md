@@ -26,7 +26,7 @@
 
 **OpinionMap** is a production-grade, multi-agent market intelligence platform that leverages cutting-edge AI orchestration to provide comprehensive market analysis. Built with **LangGraph** for sophisticated agent workflow management and powered by **Google Gemini**, the platform autonomously scrapes, processes, and analyzes data from YouTube and Reddit (with a Twitter/X sentiment simulator for demo purposes).
 
-The platform employs **Retrieval-Augmented Generation (RAG)** with ChromaDB for contextual analysis, ensuring insights are grounded in real data. A beautiful **React + TypeScript** dashboard provides interactive visualizations, while **Prometheus + Grafana** deliver real-time observability.
+Once a run completes, **Ask AI** lets you question its data directly: **Retrieval-Augmented Generation (RAG)** over ChromaDB answers follow-up questions from the collected comments only, cites the exact comments it used, and says so when the data doesn't cover a question. A **React + TypeScript** dashboard provides interactive visualizations, while **Prometheus + Grafana** deliver real-time observability.
 
 Whether you're tracking competitor movements, analyzing market sentiment, or discovering emerging trends — OpinionMap provides the intelligence you need, when you need it.
 
@@ -60,7 +60,7 @@ Whether you're tracking competitor movements, analyzing market sentiment, or dis
 
 - 🤖 **Multi-Agent Orchestration** — LangGraph-powered agent workflows with dynamic task routing and parallel execution
 - 📊 **Multi-Source Intelligence** — YouTube, Reddit, Hacker News, and Bluesky scraping with NewsData.io and The Guardian for journalism coverage; Twitter/X uses a local sentiment simulator. All sources fall back to realistic demo data — no API keys required to run the full pipeline.
-- 🧠 **RAG-Powered Analysis** — ChromaDB vector storage with context-aware retrieval for grounded insights
+- 💬 **Ask AI** — Question the data, not just the summary. Every completed workflow is embedded into its own ChromaDB collection; follow-up questions get answers built only from the collected comments, each claim cited to the exact comment, with a plain "not covered" when the data doesn't answer it. Simulated sources are flagged on every citation.
 - 🎨 **Interactive Dashboard** — React + TypeScript UI with real-time data visualization and workflow management
 - 🔄 **Workflow Management** — Create, monitor, and control complex multi-agent analysis pipelines
 - 📈 **Comprehensive Monitoring** — Prometheus metrics, Grafana dashboards, and structured logging
@@ -98,6 +98,7 @@ graph TB
         API[FastAPI Server]
         AUTH[Auth Middleware]
         WF[Workflow Engine]
+        ASK[Ask AI]
     end
 
     subgraph AI Engine
@@ -139,9 +140,10 @@ graph TB
     RDA --> RD & HN & BSK & NDI & GRD
     TWA --> TW
     ANA --> GEM
-    ANA --> CR
     API --> PG
-    LG --> CR
+    API --> ASK
+    ASK --> CR
+    ASK --> GEM
     API --> PROM
     PROM --> GRAF
 
@@ -213,6 +215,12 @@ Your secure deployment will now be running and accessible at `https://localhost`
   login slow. Point an uptime monitor (UptimeRobot, Better Stack, cron-job.org) at `GET` or `HEAD`
   `https://<your-backend>/`, every 10–14 minutes. That endpoint does no database or auth work.
   One always-on free service stays within Render's monthly free-instance hours.
+- **Ask AI on Render:** with `CHROMA_HOST` unset the vectors live on the instance's local disk,
+  which Render wipes on every restart and deploy. Nothing is lost: Postgres stays the source of
+  truth, and a workflow's collection is rebuilt from its stored comments on the next question
+  (the page shows progress meanwhile). The free Gemini tier embeds 100 texts a minute and 1,000 a
+  day, roughly 3–6 workflows; set `ASK_AI_INDEX_ON_COMPLETE=false` to embed only workflows someone
+  asks about. The other `ASK_AI_*` settings are described in `.env.example`.
 - **Password hashing cost:** `BCRYPT_ROUNDS` (default 12, allowed 10–15). Each step doubles the CPU
   time of every login. Existing users are re-hashed at the new cost on their next login, so it can
   be changed at any time.
@@ -253,7 +261,9 @@ OpinionMap provides interactive API documentation:
 | `GET` | `/api/dashboard/overview` | Dashboard summary metrics |
 | `GET` | `/api/dashboard/sentiment` | Sentiment breakdown data |
 | `GET` | `/api/dashboard/trends` | Trend time-series data |
-| `POST` | `/api/rag/query` | Query the RAG knowledge base |
+| `GET` | `/api/workflows/{id}/ask/status` | Ask AI: is the workflow's data indexed, and how much is simulated |
+| `POST` | `/api/workflows/{id}/ask` | Ask AI: a cited answer from the workflow's comments (202 while its data is being prepared) |
+| `POST` | `/api/rag/query` | Legacy uncited RAG query over one owned workflow (superseded by Ask AI) |
 | `GET` | `/api/schedules/` | List scheduled tasks |
 | `GET` | `/api/monitoring/health` | Health check (verifies DB connectivity) |
 | `GET` | `/metrics` | Prometheus scrape endpoint |
@@ -275,11 +285,12 @@ OpinionMap/
 │   │   ├── api/               # API route handlers
 │   │   ├── core/              # Config, security, dependencies
 │   │   ├── models/            # SQLAlchemy ORM models
+│   │   ├── rag/               # Ask AI: embeddings, Chroma store, per-workflow index
 │   │   ├── schemas/           # Pydantic request/response schemas
 │   │   ├── services/          # Business logic layer
 │   │   ├── database.py        # Database connection setup
 │   │   └── main.py            # FastAPI application entry
-│   ├── tests/                 # pytest suite (auth)
+│   ├── tests/                 # pytest suite (auth, Ask AI)
 │   ├── alembic.ini            # Alembic configuration
 │   ├── Dockerfile             # Backend container
 │   └── requirements.txt       # Python dependencies
@@ -289,6 +300,8 @@ OpinionMap/
 │   │   ├── assets/            # Static assets
 │   │   ├── components/        # Reusable UI components
 │   │   ├── context/           # React context providers
+│   │   ├── features/ask-ai/   # Ask AI page (lazy-loaded, own CSS)
+│   │   ├── landing/           # Public landing page (lazy-loaded)
 │   │   └── pages/             # Page components
 │   ├── Dockerfile             # Frontend container
 │   ├── nginx.conf             # Frontend Nginx config
@@ -307,7 +320,7 @@ OpinionMap/
 └── README.md                  # This file
 ```
 
-> **Note on tests:** `backend/tests/` covers authentication (login, registration, user listing) and runs with `make test` or `cd backend && pytest`; it uses a throwaway SQLite database. `make test-cov`, `make format` and `make lint` still print a notice instead of running anything (pytest-cov, black, isort, ruff and mypy are intentionally not runtime dependencies).
+> **Note on tests:** `backend/tests/` covers authentication (login, registration, user listing) and Ask AI (ownership, validation, the not-covered gate, citation checks, prompt-injection handling, rate limiting, rebuilding from Postgres, and that indexing failures never change a workflow's status). Embeddings and Gemini are faked, so no network is needed. It runs with `make test` or `cd backend && pytest` against a throwaway SQLite database. `make test-cov`, `make format` and `make lint` still print a notice instead of running anything (pytest-cov, black, isort, ruff and mypy are intentionally not runtime dependencies).
 
 ---
 
