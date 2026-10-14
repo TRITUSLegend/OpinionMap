@@ -98,8 +98,13 @@ async def ask(
         return await ask_service.answer_question(db, workflow, question, body.history)
     except ask_service.IndexPreparing:
         return JSONResponse(status_code=202, content=PREPARING, headers={"Retry-After": "10"})
-    except ask_service.AskUnavailable:
+    except ask_service.AskUnavailable as e:
         raise HTTPException(
             status_code=503,
-            detail="Ask AI can't answer right now. Please try again in a minute.",
+            detail=(
+                "Ask AI has reached today's limit for preparing data on the free Gemini tier. "
+                "Please try again later."
+                if e.daily_quota
+                else "Ask AI can't answer right now. Please try again in a minute."
+            ),
         )

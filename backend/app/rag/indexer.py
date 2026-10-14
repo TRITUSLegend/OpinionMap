@@ -23,7 +23,7 @@ from app.core.logging import get_logger
 from app.database import async_session_factory
 from app.models.scraped_data import ScrapedData
 from app.models.workflow import Workflow
-from app.rag.embeddings import EmbeddingGenerator
+from app.rag.embeddings import EmbeddingGenerator, failure_reason
 from app.rag.provenance import is_simulated, mock_fingerprints
 from app.rag.vectorstore import VectorStore, workflow_collection_name
 
@@ -247,7 +247,7 @@ def _forget_build(key: str, task: asyncio.Task) -> None:
     if _builds.get(key) is task:
         del _builds[key]
     if not task.cancelled() and task.exception() is not None:
-        logger.warning("ask_ai_index_build_failed", workflow_id=key, error=type(task.exception()).__name__)
+        logger.warning("ask_ai_index_build_failed", workflow_id=key, **failure_reason(task.exception()))
 
 
 def start_index_build(plan: IndexPlan) -> asyncio.Task:

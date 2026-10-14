@@ -355,3 +355,24 @@ def test_legacy_rag_routes_still_respond(client, owner, ready, calls, monkeypatc
     _, stranger = _user(client, "other@example.com")
     assert client.post("/api/rag/query", json={"question": "battery?", "workflow_id": str(ready)}, headers=stranger).status_code == 404
     assert client.post("/api/rag/index", params={"workflow_id": "not-a-uuid"}, headers=stranger).status_code == 404
+
+
+def test_retry_policy_waits_out_minute_limits_but_not_daily_ones():
+    from app.rag.embeddings import _retry_after
+
+    minute = Exception('429 Quota exceeded. quota_id: "EmbedContentRequestsPerMinutePerUserPerProjectPerModel-FreeTier" Please retry in 13.4s.')
+    day = Exception('429 Quota exceeded. quota_id: "EmbedContentRequestsPerDayPerUserPerProjectPerModel-FreeTier"')
+    assert _retry_after(minute) == pytest.approx(14.4)
+    assert _retry_after(day) is None
+    assert _retry_after(Exception("503 The service is currently unavailable.")) == 5.0
+    assert _retry_after(ValueError("400 API key not valid")) is None
+
+
+def test_daily_quota_gets_its_own_message(client, owner, ready, calls, monkeypatch):
+    async def exhausted(self, texts, task_type, **kwargs):
+        raise EmbeddingError("embedding failed", daily_quota=True)
+
+    monkeypatch.setattr(EmbeddingGenerator, "embed_strict", exhausted)
+    r = ask(client, owner[1], ready)
+    assert r.status_code == 503
+    assert "today's limit" in r.json()["detail"]

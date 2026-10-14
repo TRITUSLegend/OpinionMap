@@ -20,7 +20,7 @@ from app.core.logging import get_logger
 from app.core.retry import gemini_backoff
 from app.core.sanitizer import extract_json, find_injection_pattern, safe_query_for_prompt
 from app.models.workflow import Workflow
-from app.rag.embeddings import EmbeddingGenerator
+from app.rag.embeddings import EmbeddingGenerator, failure_reason
 from app.rag.indexer import Chunk, IndexPlan, collection_count, is_building, load_plan, wait_for_index
 from app.rag.vectorstore import VectorStore
 
@@ -44,6 +44,14 @@ _AS_DATA = str.maketrans({"<": "‹", ">": "›", "[": "(", "]": ")"})
 
 class AskUnavailable(Exception):
     """Embeddings, Chroma or Gemini failed (or no key is set). Maps to a 503."""
+
+    def __init__(self, message: str, daily_quota: bool = False):
+        super().__init__(message)
+        self.daily_quota = daily_quota
+
+
+def _daily_quota(error: Exception) -> bool:
+    return bool(getattr(error, "daily_quota", False))
 
 
 class IndexPreparing(Exception):
@@ -267,8 +275,8 @@ async def answer_question(db: AsyncSession, workflow: Workflow, question: str, h
         ready = await wait_for_index(plan, settings.ASK_AI_INDEX_WAIT_SECONDS)
         timings["index_ms"] = _ms(t)
     except Exception as e:
-        log.warning("ask_ai_index_unavailable", error=type(e).__name__, **timings)
-        raise AskUnavailable("index failed") from e
+        log.warning("ask_ai_index_unavailable", **failure_reason(e), **timings)
+        raise AskUnavailable("index failed", daily_quota=_daily_quota(e)) from e
     if not ready:
         log.info("ask_ai_preparing", chunks=len(plan.chunks), **timings)
         raise IndexPreparing()
@@ -284,8 +292,8 @@ async def answer_question(db: AsyncSession, workflow: Workflow, question: str, h
         hits = await retrieve(plan, vector)
         timings["retrieve_ms"] = _ms(t)
     except Exception as e:
-        log.warning("ask_ai_retrieval_failed", error=type(e).__name__, **timings)
-        raise AskUnavailable("retrieval failed") from e
+        log.warning("ask_ai_retrieval_failed", **failure_reason(e), **timings)
+        raise AskUnavailable("retrieval failed", daily_quota=_daily_quota(e)) from e
 
     best = hits[0].similarity if hits else 0.0
     if not hits or best < settings.ASK_AI_MIN_SIMILARITY:

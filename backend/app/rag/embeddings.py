@@ -29,6 +29,11 @@ _RETRY_IN = re.compile(r"retry in ([\d.]+)\s*s|seconds:\s*(\d+)", re.IGNORECASE)
 class EmbeddingError(RuntimeError):
     """Embeddings could not be produced (no API key, quota, or an API error)."""
 
+    def __init__(self, message: str, daily_quota: bool = False):
+        super().__init__(message)
+        # The free tier's 1,000 texts a day are used up: retrying today won't help.
+        self.daily_quota = daily_quota
+
 
 def _as_vectors(result) -> list[list[float]]:
     embeddings = result.get("embedding") if isinstance(result, dict) else result
@@ -46,14 +51,24 @@ def _retry_after(error: Exception) -> float | None:
     batch counts as one, so a workflow can need a minute or more. That is why
     this waits for the delay the API asks for instead of core/retry.py's
     16-second cap. A daily quota can't be waited out, so it fails at once.
+    Transient server errors (500, 503, timeouts) get a short pause.
     """
-    text = str(error)
-    if not any(marker in text for marker in ("429", "ResourceExhausted", "quota")):
-        return None
-    if "PerDay" in text:
-        return None
-    match = _RETRY_IN.search(text)
-    return float(match.group(1) or match.group(2)) + 1.0 if match else 15.0
+    text = f"{type(error).__name__} {error}"
+    if any(marker in text for marker in ("429", "ResourceExhausted", "quota")):
+        if "PerDay" in text:
+            return None
+        match = _RETRY_IN.search(text)
+        return float(match.group(1) or match.group(2)) + 1.0 if match else 15.0
+    if any(marker in text for marker in ("InternalServerError", "ServiceUnavailable", "DeadlineExceeded", "500 ", "503 ", "504 ")):
+        return 5.0
+    return None
+
+
+def failure_reason(error: BaseException) -> dict:
+    """Loggable detail of why embedding failed: the underlying error's type and
+    the start of its message (API errors name quotas, never request content)."""
+    cause = error.__cause__ or error
+    return {"cause": type(cause).__name__, "reason": str(cause)[:240]}
 
 
 class EmbeddingGenerator:
@@ -120,7 +135,9 @@ class EmbeddingGenerator:
                 except Exception as e:
                     delay = _retry_after(e)
                     if delay is None or waited + delay > max_wait:
-                        raise EmbeddingError(f"embedding failed: {type(e).__name__}") from e
+                        raise EmbeddingError(
+                            f"embedding failed: {type(e).__name__}", daily_quota="PerDay" in str(e),
+                        ) from e
                     logger.warning("embedding_rate_limited", wait_seconds=round(delay, 1), task_type=task_type)
                     await asyncio.sleep(delay)
                     waited += delay

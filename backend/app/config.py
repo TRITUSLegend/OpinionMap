@@ -93,6 +93,10 @@ class Settings(BaseSettings):
     # answers 202 "preparing" (the build carries on in the background). The
     # free tier embeds 100 texts a minute, so a large workflow can take longer.
     ASK_AI_INDEX_WAIT_SECONDS: float = Field(default=25.0, ge=0.0)
+    # Embed each workflow as soon as its run completes. The free tier embeds
+    # 1,000 texts a day (about 3-6 workflows), so false saves the quota for
+    # workflows someone actually asks about: they're indexed on first question.
+    ASK_AI_INDEX_ON_COMPLETE: bool = True
     ASK_AI_RATE_LIMIT_PER_MINUTE: int = Field(default=10, ge=1)
 
     # CORS

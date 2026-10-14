@@ -23,8 +23,10 @@ def _schedule_ask_ai_index(workflow_id: UUID) -> None:
     it starts never writes to the workflow row.
     """
     try:
+        from app.config import settings
         from app.rag.indexer import schedule_workflow_index
-        schedule_workflow_index(workflow_id)
+        if settings.ASK_AI_INDEX_ON_COMPLETE:
+            schedule_workflow_index(workflow_id)
     except Exception as e:
         logger.warning(f"Ask AI indexing not scheduled for workflow {workflow_id}: {type(e).__name__}")
 
