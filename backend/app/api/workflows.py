@@ -10,6 +10,7 @@ from app.models.user import User
 from app.schemas.workflow import WorkflowCreate, WorkflowResponse, WorkflowListResponse
 from app.services import workflow_service
 from app.workers.tasks import execute_workflow_task
+from app.rag.indexer import schedule_index_delete
 
 router = APIRouter()
 
@@ -74,4 +75,6 @@ async def delete_workflow(
         raise HTTPException(status_code=404, detail="Workflow not found")
         
     success = await workflow_service.delete_workflow(db, workflow_id)
+    # Drop its Ask AI vectors too: best effort, in the background, never raises.
+    schedule_index_delete(workflow_id)
     return {"success": success}

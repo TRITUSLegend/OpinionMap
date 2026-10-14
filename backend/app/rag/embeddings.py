@@ -1,14 +1,19 @@
 """
 Embedding generator for ChromaDB vector storage.
 
-Uses Google Gemini text-embedding-004 (768-dim) when a GEMINI_API_KEY is
-configured. Falls back to deterministic TF-IDF-style sparse vectors so
-ChromaDB remains functional (though with degraded recall) without an API key.
+Uses the Gemini model in settings.EMBEDDING_MODEL (gemini-embedding-001, cut to
+768 dimensions) when a GEMINI_API_KEY is configured.
+
+generate() falls back to deterministic TF-IDF-style sparse vectors so the
+legacy /api/rag path stays functional (though with degraded recall) without an
+API key. embed_strict() never falls back: Ask AI compares similarities with a
+threshold, which only means something for real semantic embeddings.
 """
 
 import asyncio
 import hashlib
 import math
+import re
 
 import google.generativeai as genai
 
@@ -17,7 +22,38 @@ from app.core.logging import get_logger
 
 logger = get_logger(__name__)
 
-_EMBEDDING_DIM = 768  # text-embedding-004 output dimension
+_EMBEDDING_DIM = settings.EMBEDDING_DIM
+_RETRY_IN = re.compile(r"retry in ([\d.]+)\s*s|seconds:\s*(\d+)", re.IGNORECASE)
+
+
+class EmbeddingError(RuntimeError):
+    """Embeddings could not be produced (no API key, quota, or an API error)."""
+
+
+def _as_vectors(result) -> list[list[float]]:
+    embeddings = result.get("embedding") if isinstance(result, dict) else result
+    # embed_content returns a single vector for a single string,
+    # or a list of vectors for a list — normalise to list[list[float]]
+    if embeddings and isinstance(embeddings[0], float):
+        embeddings = [embeddings]
+    return embeddings
+
+
+def _retry_after(error: Exception) -> float | None:
+    """Seconds to wait before retrying a rate-limited call, or None if waiting won't help.
+
+    The free tier allows 100 embedding requests a minute and every text in a
+    batch counts as one, so a workflow can need a minute or more. That is why
+    this waits for the delay the API asks for instead of core/retry.py's
+    16-second cap. A daily quota can't be waited out, so it fails at once.
+    """
+    text = str(error)
+    if not any(marker in text for marker in ("429", "ResourceExhausted", "quota")):
+        return None
+    if "PerDay" in text:
+        return None
+    match = _RETRY_IN.search(text)
+    return float(match.group(1) or match.group(2)) + 1.0 if match else 15.0
 
 
 class EmbeddingGenerator:
@@ -31,7 +67,7 @@ class EmbeddingGenerator:
     async def generate(self, texts: list[str]) -> list[list[float]]:
         """Return one embedding vector per text.
 
-        Tries Gemini text-embedding-004 first; falls back to a deterministic
+        Tries the Gemini embedding model first; falls back to a deterministic
         sparse vector if the API is unavailable.
         """
         if not texts:
@@ -41,20 +77,58 @@ class EmbeddingGenerator:
             try:
                 result = await asyncio.to_thread(
                     genai.embed_content,
-                    model="models/text-embedding-004",
+                    model=settings.EMBEDDING_MODEL,
                     content=texts,
+                    output_dimensionality=_EMBEDDING_DIM,
                 )
-                embeddings = result.get("embedding") if isinstance(result, dict) else result
-                # embed_content returns a single vector for a single string,
-                # or a list of vectors for a list — normalise to list[list[float]]
-                if embeddings and isinstance(embeddings[0], float):
-                    embeddings = [embeddings]
+                embeddings = _as_vectors(result)
                 logger.debug(f"Gemini embeddings generated for {len(texts)} texts")
                 return embeddings
             except Exception as e:
                 logger.warning(f"Gemini embedding failed, using sparse fallback: {e}")
 
         return self._sparse_fallback(texts)
+
+    async def embed_strict(self, texts: list[str], task_type: str, max_wait: float = 600.0) -> list[list[float]]:
+        """Embed ``texts`` in batches with the Gemini model, or raise EmbeddingError.
+
+        ``task_type`` is "retrieval_document" for stored chunks and
+        "retrieval_query" for questions. A rate-limited batch waits for the delay
+        the API asks for, up to ``max_wait`` seconds in total for the call; any
+        other failure raises at once.
+        """
+        if not texts:
+            return []
+        if not settings.GEMINI_API_KEY:
+            raise EmbeddingError("GEMINI_API_KEY is not set")
+
+        vectors: list[list[float]] = []
+        waited = 0.0
+        size = settings.EMBEDDING_BATCH_SIZE
+        for start in range(0, len(texts), size):
+            batch = texts[start:start + size]
+            while True:
+                try:
+                    result = await asyncio.to_thread(
+                        genai.embed_content,
+                        model=settings.EMBEDDING_MODEL,
+                        content=batch,
+                        task_type=task_type,
+                        output_dimensionality=_EMBEDDING_DIM,
+                    )
+                    break
+                except Exception as e:
+                    delay = _retry_after(e)
+                    if delay is None or waited + delay > max_wait:
+                        raise EmbeddingError(f"embedding failed: {type(e).__name__}") from e
+                    logger.warning("embedding_rate_limited", wait_seconds=round(delay, 1), task_type=task_type)
+                    await asyncio.sleep(delay)
+                    waited += delay
+            batch_vectors = _as_vectors(result)
+            if len(batch_vectors) != len(batch):
+                raise EmbeddingError("embedding count did not match the input")
+            vectors.extend(batch_vectors)
+        return vectors
 
     def _sparse_fallback(self, texts: list[str]) -> list[list[float]]:
         """Deterministic sparse embedding using character n-gram hashing.

@@ -50,6 +50,15 @@ DANGEROUS_CHARS = [
 ]
 
 
+def find_injection_pattern(text: str) -> str | None:
+    """Return the first prompt-injection pattern that matches ``text``, if any."""
+    text_lower = text.lower()
+    for pattern in INJECTION_PATTERNS:
+        if re.search(pattern, text_lower):
+            return pattern
+    return None
+
+
 def sanitize_query(raw_query: str) -> tuple[str, list[str]]:
     """
     Sanitize user query before it touches any LLM prompt.
@@ -88,18 +97,17 @@ def sanitize_query(raw_query: str) -> tuple[str, list[str]]:
             warnings.append("Special characters removed.")
     
     # ── 3. Prompt injection detection ─────────────
-    query_lower = query.lower()
-    for pattern in INJECTION_PATTERNS:
-        if re.search(pattern, query_lower):
-            logger.warning(
-                "Prompt injection attempt detected",
-                pattern=pattern,
-                query_preview=query[:80]
-            )
-            raise ValueError(
-                "Your query contains instructions that look like a prompt manipulation attempt. "
-                "Please enter a normal product name or topic."
-            )
+    pattern = find_injection_pattern(query)
+    if pattern:
+        logger.warning(
+            "Prompt injection attempt detected",
+            pattern=pattern,
+            query_preview=query[:80]
+        )
+        raise ValueError(
+            "Your query contains instructions that look like a prompt manipulation attempt. "
+            "Please enter a normal product name or topic."
+        )
     
     # ── 4. Normalize whitespace ───────────────────
     query = re.sub(r'\s+', ' ', query).strip()

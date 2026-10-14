@@ -15,6 +15,20 @@ from app.core.logging import get_logger
 logger = get_logger(__name__)
 
 
+def _schedule_ask_ai_index(workflow_id: UUID) -> None:
+    """Embed a finished run's comments for Ask AI, in the background.
+
+    Best effort, after the final commit: it returns at once, never raises
+    (so it can't reach the except below that marks a run failed), and the task
+    it starts never writes to the workflow row.
+    """
+    try:
+        from app.rag.indexer import schedule_workflow_index
+        schedule_workflow_index(workflow_id)
+    except Exception as e:
+        logger.warning(f"Ask AI indexing not scheduled for workflow {workflow_id}: {type(e).__name__}")
+
+
 async def execute_workflow_task(workflow_id: UUID, query: str, sources: list[str], user_id: UUID):
     logger.info(f"Background task starting for workflow {workflow_id}")
 
@@ -133,6 +147,9 @@ async def execute_workflow_task(workflow_id: UUID, query: str, sources: list[str
 
             await db.commit()
             logger.info(f"Background task completed for workflow {workflow_id}")
+
+            if workflow_status in ("completed", "auto_approved"):
+                _schedule_ask_ai_index(workflow_id)
 
     except Exception as e:
         logger.error(f"Background task failed for workflow {workflow_id}: {e}")
