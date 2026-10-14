@@ -1,8 +1,8 @@
-import type { CSSProperties } from 'react';
+import type { ComponentType, CSSProperties } from 'react';
 import { Link } from 'react-router-dom';
 import { ContourArt } from '../components/auth/AuthScene';
 import {
-  ConvergeLines, DashboardViz, FlowLines, HeroRibbons, QualityViz, ReportsViz, ResilienceViz,
+  AskViz, ConvergeLines, DashboardViz, FlowLines, HeroRibbons, QualityViz, ReportsViz, ResilienceViz,
   SampleRun, SentimentViz, StageGlyph, ThemesViz,
 } from './visuals';
 
@@ -138,12 +138,35 @@ export const AskStrip = () => (
   </section>
 );
 
-const FEATURES = [
+interface Feature {
+  key: string;
+  label: string;
+  title: string;
+  body: string;
+  Viz: ComponentType;
+  sample?: boolean;
+  points?: string[];
+}
+
+const FEATURES: Feature[] = [
   { key: 'sentiment', label: 'Sentiment', title: 'Sentiment by source', body: 'The positive, neutral and negative share for each source, so you can see where the mood differs.', Viz: SentimentViz, sample: true },
   { key: 'themes', label: 'Themes', title: 'Themes and keywords', body: 'Keywords and recurring topics pulled from the posts, so you know what people actually talk about.', Viz: ThemesViz, sample: true },
   { key: 'dash', label: 'Dashboard', title: 'A dashboard for every run', body: 'Pick a completed workflow to see its data points, sentiment split and trends in one place.', Viz: DashboardViz, sample: true },
   { key: 'reports', label: 'Export', title: 'Reports you can export', body: 'An executive summary, sections and recommendations, downloadable as PDF or DOCX.', Viz: ReportsViz },
   { key: 'quality', label: 'Quality gate', title: 'A checklist on every report', body: 'A rule-based reviewer checks each report before you see it. Fails go back for a rewrite, up to twice.', Viz: QualityViz },
+  {
+    key: 'ask',
+    label: 'Ask AI',
+    title: 'Question the data, not just the summary',
+    body: 'Every completed workflow is embedded into its own vector collection. Ask follow-up questions and get answers built only from the comments that were collected, each one cited so you can check it.',
+    points: [
+      'Retrieval-augmented generation over ChromaDB',
+      'Answers cite the exact source comments',
+      'Says so when the data does not cover a question',
+    ],
+    Viz: AskViz,
+    sample: true,
+  },
   { key: 'resilience', label: 'Resilience', title: 'Resilient by design', body: 'A failing source never stops a run. The error is logged and the remaining sources carry on.', Viz: ResilienceViz },
 ];
 
@@ -155,11 +178,16 @@ export const Features = () => (
         <h2 id="lp-features-title" className="lp-h2">From raw posts to a <em>reviewed</em> report.</h2>
       </header>
       <div className="lp-bento">
-        {FEATURES.map(({ key, label, title, body, Viz, sample }, i) => (
+        {FEATURES.map(({ key, label, title, body, Viz, sample, points }, i) => (
           <article key={key} className={`lp-card lp-card-${key}`} data-reveal style={vars({ '--d': i % 3 })}>
             <p className="lp-label">{label}</p>
             <h3>{title}</h3>
             <p className="lp-card-body">{body}</p>
+            {points && (
+              <ul className="lp-card-points">
+                {points.map((point) => <li key={point}>{point}</li>)}
+              </ul>
+            )}
             <Viz />
             {sample && <p className="lp-foot lp-card-foot">Illustrative preview</p>}
           </article>

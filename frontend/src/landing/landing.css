@@ -908,6 +908,34 @@
   font-size: 0.625rem;
 }
 
+/* Short claims under a card's body (the Ask AI card). */
+.lp-card-points {
+  display: grid;
+  gap: 6px;
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  color: var(--lp-muted);
+}
+
+.lp-card-points li {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.lp-card-points li::before {
+  content: '';
+  flex-shrink: 0;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background-color: var(--ember);
+  transform: translateY(-2px);
+}
+
 /* Room for the footnote, so wrapped content never runs into it. */
 .lp-card:has(.lp-card-foot) {
   padding-bottom: 36px;
@@ -1092,6 +1120,94 @@
   stroke-linejoin: round;
   stroke-dasharray: 1;
   stroke-dashoffset: 0;
+}
+
+/* Ask AI: a sample question, a cited answer and its sources. */
+.lp-viz-ask {
+  display: grid;
+  gap: 10px;
+  min-height: 0;
+  font-size: 0.8125rem;
+}
+
+.lp-ask-q {
+  justify-self: end;
+  max-width: 85%;
+  padding: 7px 11px;
+  border: 1px solid var(--lp-line);
+  border-radius: 10px 10px 3px 10px;
+  background-color: var(--lp-bg);
+}
+
+.lp-ask-a {
+  line-height: 1.65;
+}
+
+.lp-cite {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  border: 1px solid var(--lp-line-strong);
+  border-radius: 4px;
+  font-family: var(--lp-mono);
+  font-size: 0.6875rem;
+  line-height: 1;
+  vertical-align: 0.1em;
+}
+
+.lp-ask-src {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.lp-ask-src li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding: 7px 10px;
+  border: 1px solid var(--lp-line);
+  border-radius: 8px;
+  background-color: var(--lp-bg);
+}
+
+.lp-ask-src b {
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.lp-ask-src i {
+  flex-shrink: 0;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: var(--tone);
+}
+
+.lp-ask-quote {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--lp-muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lp-ask-gap {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 4px 12px;
+  padding: 7px 10px;
+  border: 1px dashed var(--lp-line-strong);
+  border-radius: 8px;
+  font-size: 0.75rem;
+  color: var(--lp-muted);
 }
 
 .lp-viz-resilience {
@@ -1602,6 +1718,25 @@
   .lp-card-reports,
   .lp-card-quality {
     grid-column: span 2;
+  }
+
+  /* Full width, with the copy and the sample exchange side by side. */
+  .lp-card-ask {
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+    column-gap: 40px;
+    align-items: start;
+  }
+
+  .lp-card-ask > :not(.lp-viz) {
+    grid-column: 1;
+  }
+
+  .lp-card-ask > .lp-viz {
+    grid-column: 2;
+    grid-row: 1 / span 4;
+    margin-top: 0;
   }
 }
 

@@ -197,6 +197,36 @@ export const ReportsViz = () => (
   </div>
 );
 
+const ASK_SOURCES: [string, Tone, string][] = [
+  ['YouTube', 'positive', '“Easily lasts me a full day, sometimes more.”'],
+  ['Reddit', 'negative', '“Drains fast as soon as 5G kicks in.”'],
+];
+
+/** A made-up exchange; the card's footnote marks it as illustrative. */
+export const AskViz = () => (
+  <div className="lp-viz lp-viz-ask" aria-hidden="true">
+    <p className="lp-ask-q">How long does the battery last?</p>
+    <p className="lp-ask-a">
+      Most say it lasts a full day <span className="lp-cite">1</span>, though some see fast drain on
+      5G <span className="lp-cite">2</span>.
+    </p>
+    <ul className="lp-ask-src">
+      {ASK_SOURCES.map(([name, tone, quote], i) => (
+        <li key={name} data-tone={tone} style={vars({ '--i': i })}>
+          <span className="lp-cite">{i + 1}</span>
+          <b>{name}</b>
+          <i />
+          <span className="lp-ask-quote">{quote}</span>
+        </li>
+      ))}
+    </ul>
+    <p className="lp-ask-gap">
+      <span>“What’s the weather in Paris?”</span>
+      <span className="lp-mono">Not covered by the data</span>
+    </p>
+  </div>
+);
+
 const CHECKS = ['Has a title', 'Summary of 100+ characters', 'Recommendations', 'Three or more sections', 'No placeholder text'];
 
 export const QualityViz = () => (

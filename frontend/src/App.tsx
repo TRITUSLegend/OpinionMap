@@ -20,6 +20,9 @@ const Dashboard = lazy(() => import('./pages/Dashboard').then((m) => ({ default:
 // app imports from landing/, so it can never weigh on the app itself.
 const Landing = lazy(() => import('./landing/Landing'));
 
+// Ask AI is its own chunk too, with its own CSS.
+const AskAi = lazy(() => import('./features/ask-ai/AskAi'));
+
 const DashboardFallback = () => (
   <div className="space-y-8" role="status" aria-label="Loading dashboard">
     <div className="skeleton h-8 w-72 max-w-full" />
@@ -59,6 +62,7 @@ function App() {
           <Route element={<ProtectedRoute><Layout /></ProtectedRoute>}>
             <Route path="/dashboard" element={<Suspense fallback={<DashboardFallback />}><Dashboard /></Suspense>} />
             <Route path="/workflows" element={<Workflows />} />
+            <Route path="/workflows/:workflowId/ask" element={<Suspense fallback={<div className="skeleton h-[420px] rounded-lg" role="status" aria-label="Loading Ask AI" />}><AskAi /></Suspense>} />
             <Route path="/reports" element={<Reports />} />
             <Route path="/users" element={<RequireRole role="admin"><Users /></RequireRole>} />
             <Route path="/settings" element={<Settings />} />

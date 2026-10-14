@@ -1,0 +1,608 @@
+/*
+ * Ask AI. Loaded with the page's lazy chunk (like landing.css), so none of it
+ * weighs on the app bundle. Built only from the app's tokens; sentiment colours
+ * appear only as data (the dot in a source's sentiment badge).
+ */
+
+/* The conversation scrolls inside the page, so the window itself never scrolls
+   and the floating scroll-to-top button never sits on the composer.
+   Phones: 4rem header + 1rem padding above; main's 6rem bottom padding (room for
+   floating controls) is taken back down to 1rem. Wider: 4rem header + 2rem
+   padding above and below. */
+.aa-page {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  height: calc(100dvh - 6rem);
+  min-height: 24rem;
+  margin-bottom: -5rem;
+}
+
+@media (min-width: 768px) {
+  .aa-page {
+    height: calc(100dvh - 8rem);
+    margin-bottom: 0;
+  }
+}
+
+/* While the storage notice is up, end above it instead of under it. */
+body:has([aria-label='Storage notice']) .aa-page {
+  height: calc(100dvh - 15rem);
+  margin-bottom: 4rem;
+}
+
+@media (min-width: 768px) {
+  body:has([aria-label='Storage notice']) .aa-page {
+    height: calc(100dvh - 13rem);
+    margin-bottom: 5rem;
+  }
+}
+
+.aa-skel-title {
+  height: 2rem;
+  width: 12rem;
+}
+
+.aa-skel-log {
+  flex: 1;
+  border-radius: 8px;
+}
+
+/* ── Header ─────────────────────────────────────────────── */
+
+.aa-head {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.aa-head-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.aa-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  min-height: 2.75rem;
+  align-self: flex-start;
+  margin-left: -0.25rem;
+  padding: 0 0.25rem;
+  border-radius: 6px;
+  color: var(--muted);
+  font-size: 0.875rem;
+  transition: color var(--dur-fast) var(--ease);
+}
+
+.aa-back:hover {
+  color: var(--fg);
+}
+
+.aa-back svg,
+.aa-clear svg,
+.aa-note svg,
+.aa-source-link svg,
+.aa-send svg {
+  width: 1rem;
+  height: 1rem;
+  flex-shrink: 0;
+}
+
+.aa-clear {
+  min-height: 2.75rem;
+}
+
+.aa-context {
+  color: var(--muted);
+  font-size: 0.9375rem;
+  overflow-wrap: anywhere;
+}
+
+.aa-context em {
+  font-family: var(--font-serif);
+  font-size: 1.0625rem;
+  color: var(--fg);
+}
+
+.aa-fine {
+  color: var(--subtle);
+  font-size: 0.8125rem;
+  line-height: 1.25rem;
+}
+
+.aa-muted {
+  color: var(--muted);
+  font-size: 0.875rem;
+}
+
+.aa-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  color: var(--muted);
+  font-size: 0.8125rem;
+  line-height: 1.25rem;
+}
+
+.aa-note svg {
+  margin-top: 2px;
+}
+
+/* ── Conversation ───────────────────────────────────────── */
+
+/* position: relative contains the absolutely positioned sr-only labels; without
+   it they escape the scroller and stretch the window to the log's full height. */
+.aa-log {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  background-color: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.aa-col {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  max-width: 46rem;
+  margin: 0 auto;
+  padding: 1.25rem 1rem;
+}
+
+@media (min-width: 768px) {
+  .aa-col {
+    padding: 1.5rem;
+  }
+}
+
+.aa-msg {
+  animation: aa-in var(--dur) var(--ease) backwards;
+}
+
+.aa-msg-user {
+  align-self: flex-end;
+  max-width: min(85%, 36rem);
+  padding: 0.625rem 0.875rem;
+  background-color: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 12px 12px 4px 12px;
+  color: var(--fg);
+  font-size: 0.9375rem;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+@keyframes aa-in {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 6px, 0);
+  }
+}
+
+.aa-empty {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.aa-empty h2 {
+  font-family: var(--font-serif);
+  font-size: 1.25rem;
+  line-height: 1.75rem;
+  color: var(--fg);
+}
+
+.aa-suggestions {
+  display: grid;
+  gap: 0.5rem;
+  margin-top: 0.25rem;
+}
+
+@media (min-width: 640px) {
+  .aa-suggestions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.aa-suggestion {
+  min-height: 2.75rem;
+  padding: 0.625rem 0.875rem;
+  background-color: var(--canvas);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--fg);
+  font-size: 0.875rem;
+  line-height: 1.35;
+  text-align: left;
+  transition:
+    background-color var(--dur-fast) var(--ease),
+    border-color var(--dur-fast) var(--ease),
+    transform var(--dur-fast) var(--ease);
+}
+
+.aa-suggestion:hover {
+  background-color: var(--surface-2);
+  border-color: var(--border-strong);
+}
+
+.aa-suggestion:active {
+  transform: translateY(1px);
+}
+
+/* ── Answers ────────────────────────────────────────────── */
+
+.aa-answer {
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+}
+
+.aa-answer-text {
+  color: var(--fg);
+  font-size: 0.9375rem;
+  line-height: 1.7;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+
+/* A citation marker. The ::before pads the hit area to 44px without
+   stretching the line. */
+.aa-chip {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.375rem;
+  height: 1.375rem;
+  margin: 0 0.125rem;
+  padding: 0 0.3125rem;
+  vertical-align: 0.1em;
+  background-color: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: 4px;
+  color: var(--fg);
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  transition:
+    background-color var(--dur-fast) var(--ease),
+    border-color var(--dur-fast) var(--ease),
+    color var(--dur-fast) var(--ease);
+}
+
+.aa-chip::before {
+  content: '';
+  position: absolute;
+  inset: -11px;
+}
+
+.aa-chip:hover,
+.aa-chip[data-active] {
+  background-color: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-fg);
+}
+
+.aa-uncovered {
+  display: flex;
+  gap: 0.75rem;
+  padding: 0.875rem 1rem;
+  background-color: var(--surface-2);
+  border: 1px dashed var(--border-strong);
+  border-radius: 8px;
+  color: var(--muted);
+  font-size: 0.9375rem;
+  line-height: 1.6;
+}
+
+.aa-uncovered > svg {
+  width: 1.25rem;
+  height: 1.25rem;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.aa-uncovered > div {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.aa-uncovered-title {
+  color: var(--fg);
+  font-weight: 600;
+}
+
+.aa-sources {
+  display: grid;
+  gap: 0.5rem;
+  margin: 0.25rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.aa-source {
+  padding: 0.75rem 0.875rem;
+  background-color: var(--canvas);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  scroll-margin: 1rem;
+  transition:
+    background-color var(--dur-fast) var(--ease),
+    border-color var(--dur-fast) var(--ease);
+}
+
+.aa-source[data-active] {
+  background-color: var(--surface-2);
+  border-color: var(--fg);
+}
+
+.aa-source-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.375rem 0.625rem;
+  margin-bottom: 0.375rem;
+  color: var(--muted);
+  font-size: 0.75rem;
+  line-height: 1.25rem;
+}
+
+.aa-source-n {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.25rem;
+  height: 1.25rem;
+  padding: 0 0.25rem;
+  background-color: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: 4px;
+  color: var(--fg);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.aa-source-name {
+  color: var(--fg);
+  font-weight: 600;
+}
+
+.aa-sent {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3125rem;
+}
+
+/* Data colour: the only place sentiment hues appear on this page. */
+.aa-sent i {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  background-color: var(--neutral);
+}
+
+.aa-sent[data-tone='positive'] i {
+  background-color: var(--positive);
+}
+
+.aa-sent[data-tone='negative'] i {
+  background-color: var(--negative);
+}
+
+.aa-sim {
+  padding: 0 0.375rem;
+  border: 1px dashed var(--border-strong);
+  border-radius: 4px;
+  color: var(--fg);
+  font-weight: 500;
+}
+
+.aa-source-link {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin-left: auto;
+  color: var(--muted);
+  text-decoration: underline;
+  text-decoration-color: var(--border-strong);
+  text-underline-offset: 3px;
+  transition: color var(--dur-fast) var(--ease);
+}
+
+.aa-source-link:hover {
+  color: var(--fg);
+}
+
+.aa-source-link::before {
+  content: '';
+  position: absolute;
+  inset: -12px -8px;
+}
+
+.aa-source-text {
+  color: var(--fg);
+  font-size: 0.875rem;
+  line-height: 1.55;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+
+/* Long comments show four lines until their card is picked or focused. */
+.aa-source:not([data-active]):not(:focus-within) .aa-source-text {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 4;
+  overflow: hidden;
+}
+
+/* ── Waiting ────────────────────────────────────────────── */
+
+.aa-thinking {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.aa-dots {
+  display: inline-flex;
+  align-self: flex-start;
+  gap: 0.3rem;
+  padding: 0.75rem 0.875rem;
+  background-color: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 12px 12px 12px 4px;
+}
+
+.aa-dots i {
+  width: 0.4rem;
+  height: 0.4rem;
+  border-radius: 50%;
+  background-color: var(--muted);
+  opacity: 0.35;
+  animation: aa-dot 1.2s var(--ease) infinite;
+}
+
+.aa-dots i:nth-child(2) {
+  animation-delay: 0.16s;
+}
+
+.aa-dots i:nth-child(3) {
+  animation-delay: 0.32s;
+}
+
+@keyframes aa-dot {
+  0%,
+  70%,
+  100% {
+    opacity: 0.35;
+    transform: none;
+  }
+
+  35% {
+    opacity: 1;
+    transform: translate3d(0, -3px, 0);
+  }
+}
+
+/* ── Composer ───────────────────────────────────────────── */
+
+.aa-error {
+  width: 100%;
+  max-width: 46rem;
+  margin: 0 auto;
+}
+
+.aa-composer {
+  flex-shrink: 0;
+}
+
+.aa-composer-inner {
+  max-width: 46rem;
+  margin: 0 auto;
+  padding: 0.5rem 0.5rem 0.5rem 0.875rem;
+  background-color: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: 10px;
+  transition: border-color var(--dur-fast) var(--ease);
+}
+
+.aa-composer-inner:hover {
+  border-color: var(--fg);
+}
+
+/* The textarea draws no ring of its own; its frame takes the app's focus ring. */
+.aa-composer-inner:has(.aa-input:focus-visible) {
+  border-color: var(--fg);
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+.aa-input {
+  display: block;
+  width: 100%;
+  max-height: 12rem;
+  padding: 0.375rem 0;
+  overflow-y: auto;
+  resize: none;
+  background: transparent;
+  border: 0;
+  color: var(--fg);
+  /* 16px stops iOS Safari from zooming into the field on focus. */
+  font-size: 1rem;
+  line-height: 1.5rem;
+}
+
+.aa-input:focus-visible {
+  outline: none;
+}
+
+.aa-input::placeholder {
+  color: var(--subtle);
+  opacity: 1;
+}
+
+@media (min-width: 640px) {
+  .aa-input {
+    font-size: 0.9375rem;
+  }
+}
+
+.aa-composer-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 0.25rem;
+}
+
+.aa-hint {
+  display: none;
+}
+
+@media (min-width: 640px) {
+  .aa-hint {
+    display: inline;
+  }
+}
+
+.aa-count {
+  margin-left: auto;
+  color: var(--subtle);
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.aa-count[data-full] {
+  color: var(--fg);
+  font-weight: 600;
+}
+
+.aa-send {
+  min-width: 2.75rem;
+  min-height: 2.75rem;
+}
+
+/* Icon-only on phones; the label stays for screen readers. */
+@media (max-width: 639.98px) {
+  .aa-send {
+    padding: 0;
+  }
+
+  .aa-send-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+}
