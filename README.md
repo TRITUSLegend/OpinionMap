@@ -33,24 +33,92 @@ Once a run completes, **Ask AI** lets you question its data directly. **Retrieva
 
 ## Screenshots
 
-<div align="center">
+### Landing
 
-## Authentication
-![Authentication](assets/screenshots/authentication.jpeg)
+<p align="center">
+  <img src="assets/screenshots/landing-hero.png" alt="OpinionMap landing page: the headline 'What the internet thinks, mapped.', Create account and Sign in buttons, and an illustrative preview of a research run with its six steps and a sentiment split">
+  <br>
+  <em>The public landing page. Sign in or create an account to start.</em>
+</p>
 
-## Dashboard
-![Dashboard](assets/screenshots/dashboard.jpeg)
+<p align="center">
+  <img src="assets/screenshots/landing-how-it-works.png" alt="How it works section: six connected stages, Research, Cleaning, NLP analysis, Insights, Report and Quality review, with a dashed loop back for reports that fail the checklist">
+  <br>
+  <em>The six-stage pipeline: research, cleaning, NLP analysis, insights, report, review.</em>
+</p>
 
-## Workflow Management
-![Workflow](assets/screenshots/workflow.jpeg)
+### Sign in
 
-## Reports
-![Reports](assets/screenshots/reports.jpeg)
+<p align="center">
+  <img src="assets/screenshots/auth-login.png" alt="Login screen: email and password form with a User / Admin toggle on the left, and a topographic scene with example research questions and sentiment bars on the right">
+  <br>
+  <em>Split-card login with the topographic scene. Hovering a sentiment colour highlights every matching element.</em>
+</p>
 
-## User Management
-![Users](assets/screenshots/users.jpeg)
+### Workflows
 
-</div>
+<table>
+  <tr>
+    <td align="center" width="50%">
+      <img src="assets/screenshots/new-workflow.png" alt="New research workflow dialog: a research query field and seven data-source checkboxes, with Twitter/X marked Simulated" width="100%">
+      <br>
+      <em>Start a run: enter a topic and choose from 7 sources.</em>
+    </td>
+    <td align="center" width="50%">
+      <img src="assets/screenshots/workflows-list.png" alt="Workflows table listing each query, its sources, its status (one Running, the rest Completed), its date, and an Ask AI action" width="100%">
+      <br>
+      <em>Track runs by status and open Ask AI for completed ones.</em>
+    </td>
+  </tr>
+</table>
+
+### Dashboard and reports
+
+<p align="center">
+  <img src="assets/screenshots/dashboard.png" alt="Dashboard for one completed workflow: four headline metric cards, a sentiment-by-source area chart and an overall sentiment donut chart">
+  <br>
+  <em>Sentiment by source, sentiment split and headline metrics for a completed workflow.</em>
+</p>
+
+<p align="center">
+  <img src="assets/screenshots/report.png" alt="Executive Reports page: report cards showing title, date, executive summary and recommendations, with Ask AI, download and delete actions">
+  <br>
+  <em>Generated reports, each downloadable as PDF.</em>
+</p>
+
+### Ask AI
+
+<table>
+  <tr>
+    <td align="center" width="50%">
+      <img src="assets/screenshots/ask-ai-answer.png" alt="Ask AI answer with numbered citation markers, and the cited YouTube comments shown below it as source cards" width="100%">
+      <br>
+      <em>Answers cite the exact source comments.</em>
+    </td>
+    <td align="center" width="50%">
+      <img src="assets/screenshots/ask-ai-not-covered.png" alt="Ask AI reply to an off-topic question: 'The collected data doesn't cover this', with no answer generated" width="100%">
+      <br>
+      <em>When the data doesn't cover a question, it says so instead of guessing.</em>
+    </td>
+  </tr>
+</table>
+
+### Themes
+
+<table>
+  <tr>
+    <td align="center" width="50%">
+      <img src="assets/screenshots/dashboard.png" alt="Dashboard in the dark theme" width="100%">
+      <br>
+      <em>Dark theme</em>
+    </td>
+    <td align="center" width="50%">
+      <img src="assets/screenshots/light-mode.png" alt="The same dashboard in the light theme" width="100%">
+      <br>
+      <em>Light theme</em>
+    </td>
+  </tr>
+</table>
 
 ---
 
